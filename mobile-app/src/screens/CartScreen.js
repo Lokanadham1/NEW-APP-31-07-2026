@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
@@ -30,9 +30,6 @@ function CartRow({ entry, onIncrease, onDecrease, onRemove }) {
 
 export default function CartScreen({ navigation }) {
   const { items, updateQuantity, subtotal, removeFromCart } = useCart();
-
-  const deliveryFee = items.length ? 30 : 0;
-  const total = subtotal + deliveryFee;
 
   if (items.length === 0) {
     return (
@@ -72,17 +69,12 @@ export default function CartScreen({ navigation }) {
 
       <View style={styles.summary}>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Subtotal</Text>
-          <Text style={styles.summaryValue}>₹{subtotal}</Text>
+          <Text style={styles.totalLabel}>Subtotal</Text>
+          <Text style={styles.totalValue}>₹{subtotal}</Text>
         </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Delivery fee</Text>
-          <Text style={styles.summaryValue}>₹{deliveryFee}</Text>
-        </View>
-        <View style={[styles.summaryRow, styles.totalRow]}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>₹{total}</Text>
-        </View>
+        <Text style={styles.summaryNote}>
+          Final total is confirmed by Roti & More when your order is accepted.
+        </Text>
 
         <PrimaryButton
           title="Proceed to checkout"
@@ -167,22 +159,12 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  summaryLabel: {
-    fontSize: 13.5,
+  summaryNote: {
+    fontSize: 12,
     color: colors.slate,
-  },
-  summaryValue: {
-    fontSize: 13.5,
-    color: colors.ink,
-    fontWeight: '600',
-  },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 8,
-    marginTop: 4,
+    marginBottom: spacing.sm,
   },
   totalLabel: {
     fontSize: 15,
