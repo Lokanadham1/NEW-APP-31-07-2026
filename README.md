@@ -7,7 +7,7 @@ Full production build of the Roti & More food ordering app: mobile app, backend 
 ```
 mobile-app/    React Native (Expo) Android/iOS app — customer-facing
 backend/       Node + Express + Postgres API — auth, products, orders, payments, notifications
-admin-web/     React admin dashboard (added in Phase 5) — manage products, orders, customers
+admin-web/     React admin dashboard — manage products, orders, customers, notifications
 docs/          Reference material from the original design handoff (screenshots, notes)
 ```
 
@@ -23,10 +23,10 @@ docs/          Reference material from the original design handoff (screenshots,
 ## Build roadmap
 
 1. ~~Repo cleanup & project structure~~ ✅
-2. Backend: migrate to Postgres, wire Firebase OTP verification, test locally
-3. Mobile app: connect every screen to the real API
-4. Push notifications (FCM), both directions
-5. Admin web dashboard
+2. ~~Backend: migrate to Postgres, wire Firebase OTP verification, test locally~~ ✅
+3. ~~Mobile app: connect every screen to the real API~~ ✅
+4. ~~Push notifications (FCM), both directions~~ ✅
+5. ~~Admin web dashboard~~ ✅
 6. Testing (backend tests, manual QA, security pass)
 7. Release: signed `.aab`, Play Console listing, submission
 

@@ -9,6 +9,7 @@ async function main() {
   const now = new Date().toISOString();
   const today = now.split('T')[0];
 
+  await query('DELETE FROM push_tokens');
   await query('DELETE FROM orders');
   await query('DELETE FROM products');
   await query('DELETE FROM notifications');
