@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { api, setAuthToken } from '../api/client';
+import { registerPushToken, unregisterPushToken } from '../push/notifications';
 
 const TOKEN_KEY = 'roti_auth_token';
 const AuthContext = createContext(null);
@@ -21,6 +22,7 @@ export function AuthProvider({ children }) {
           const me = await api.get('/me');
           setToken(saved);
           setUser(me);
+          registerPushToken(); // fire-and-forget, never blocks app start
         } catch {
           // token expired/invalid — clear it silently
           await SecureStore.deleteItemAsync(TOKEN_KEY);
@@ -39,6 +41,7 @@ export function AuthProvider({ children }) {
     setAuthToken(res.token);
     setToken(res.token);
     setUser(res.user);
+    registerPushToken(); // fire-and-forget, never blocks the login flow
     return res.user;
   }, []);
 
@@ -55,6 +58,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    await unregisterPushToken();
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setAuthToken(null);
     setToken(null);

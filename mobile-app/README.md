@@ -73,7 +73,31 @@ This is a separate step because it depends on your Firebase project
 existing first — the dev-mode OTP flow above is fully functional in the
 meantime for testing everything else end-to-end.
 
-## 3. Customize before publishing
+## 3. Push notifications
+
+The app already requests notification permission and registers this device
+with the backend (`POST /me/push-token`) on login and on every app start
+where a session is restored — no code change needed to turn this on. It
+degrades silently everywhere that isn't ready yet: Expo Go, a denied
+permission, or no `FIREBASE_SERVICE_ACCOUNT` configured on the backend all
+just mean no push arrives, nothing crashes.
+
+To make it actually deliver notifications you need the **same Firebase
+Android app registration** as step 2 above (`google-services.json` +
+an EAS development build — raw device push tokens obtained inside Expo Go
+belong to Expo's own Firebase project, not yours, so your backend can't
+send to them). Once that's done:
+
+- New orders push to every admin's registered devices.
+- Order accept/reject/deliver and payments push to that customer's devices.
+- Customer cancel/reschedule/address-edit pushes to admin devices.
+- Tapping a notification opens the Notifications screen
+  (`src/navigation/navigationRef.js` + the listener in `App.js`).
+
+The admin side of this (registering the admin dashboard for web push) lands
+when `admin-web/` is built.
+
+## 4. Customize before publishing
 
 - **App name / package ID**: edit `app.json` → `expo.name` and
   `expo.android.package` (must be unique, reverse-domain style). You cannot
@@ -85,7 +109,7 @@ meantime for testing everything else end-to-end.
 - **Icon/splash image**: replace the files in `assets/` (same filenames) if
   you want a different icon than the crest logo.
 
-## 4. Build a real Android app file (AAB) to upload to Google Play
+## 5. Build a real Android app file (AAB) to upload to Google Play
 
 Google requires an **Android App Bundle (.aab)**, not just an APK, for new
 Play Store apps. The easiest way to produce one without installing Android
@@ -110,7 +134,7 @@ the built app will try to talk to your local dev machine.
 generates a native `android/` folder you can open and build with Gradle
 directly.)
 
-## 5. Publish to Google Play Console
+## 6. Publish to Google Play Console
 
 1. Create a [Google Play Console](https://play.google.com/console) developer
    account (one-time $25 fee).
@@ -118,7 +142,7 @@ directly.)
    description, screenshots, category (Food & Drink), and your **privacy
    policy URL** — Google requires this even for simple apps.
 3. Under **Production → Create new release**, upload the `.aab` file from
-   step 4.
+   step 5.
 4. Complete the required Data Safety form, content rating questionnaire, and
    target audience section.
 5. Submit for review. First-time app reviews typically take a few hours to
@@ -139,10 +163,13 @@ mobile-app/
     ├── api/client.js             # fetch wrapper, attaches JWT, error handling
     ├── theme/                    # colors, spacing, category icons
     ├── context/
-    │   ├── AuthContext.js        # session, OTP login, profile
+    │   ├── AuthContext.js        # session, OTP login, profile, push registration
     │   ├── ProductsContext.js    # live product catalog
     │   └── CartContext.js        # in-progress cart (local only)
-    ├── navigation/AppNavigator.js
+    ├── push/notifications.js     # FCM permission + token register/unregister
+    ├── navigation/
+    │   ├── AppNavigator.js
+    │   └── navigationRef.js      # navigate from outside components (notification taps)
     ├── components/                # reusable UI (buttons, cards, header)
     └── screens/                   # one file per screen
 ```
