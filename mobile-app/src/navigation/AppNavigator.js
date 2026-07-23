@@ -5,10 +5,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { colors } from '../theme/colors';
-import { useCart } from '../context/CartContext';
 
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
+import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MenuScreen from '../screens/MenuScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
@@ -16,10 +16,14 @@ import CartScreen from '../screens/CartScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import OrderSuccessScreen from '../screens/OrderSuccessScreen';
 import OrdersScreen from '../screens/OrdersScreen';
+import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const RootStack = createNativeStackNavigator();
 const HomeStackNav = createNativeStackNavigator();
+const OrdersStackNav = createNativeStackNavigator();
+const ProfileStackNav = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
@@ -52,13 +56,21 @@ function HomeStack() {
   );
 }
 
-function CartBadge() {
-  const { itemCount } = useCart();
-  if (!itemCount) return null;
+function OrdersStack() {
   return (
-    <View style={styles.badge}>
-      <Text style={styles.badgeText}>{itemCount > 9 ? '9+' : itemCount}</Text>
-    </View>
+    <OrdersStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <OrdersStackNav.Screen name="Orders" component={OrdersScreen} />
+      <OrdersStackNav.Screen name="OrderDetail" component={OrderDetailScreen} />
+    </OrdersStackNav.Navigator>
+  );
+}
+
+function ProfileStack() {
+  return (
+    <ProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStackNav.Screen name="Profile" component={ProfileScreen} />
+      <ProfileStackNav.Screen name="Notifications" component={NotificationsScreen} />
+    </ProfileStackNav.Navigator>
   );
 }
 
@@ -75,15 +87,9 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Orders" component={OrdersScreen} />
-      <Tab.Screen
-        name="Cart"
-        component={CartScreen}
-        options={{
-          tabBarBadge: undefined,
-        }}
-      />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Orders" component={OrdersStack} />
+      <Tab.Screen name="Cart" component={CartScreen} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 }
@@ -94,6 +100,7 @@ export default function AppNavigator() {
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="Splash" component={SplashScreen} />
         <RootStack.Screen name="Login" component={LoginScreen} />
+        <RootStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
         <RootStack.Screen name="MainTabs" component={MainTabs} />
       </RootStack.Navigator>
     </NavigationContainer>
@@ -122,22 +129,5 @@ const styles = StyleSheet.create({
   },
   tabIconFocused: {
     opacity: 1,
-  },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -10,
-    backgroundColor: colors.gold,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.ink,
   },
 });

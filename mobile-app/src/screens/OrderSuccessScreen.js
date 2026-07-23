@@ -13,13 +13,13 @@ export default function OrderSuccessScreen({ route, navigation }) {
       </View>
       <Text style={styles.title}>Order placed!</Text>
       <Text style={styles.subtitle}>
-        Your order <Text style={styles.orderId}>{orderId}</Text> has been sent to the kitchen.
-        You'll get updates as it's prepared and delivered.
+        Your order <Text style={styles.orderId}>#{orderId}</Text> has been sent to Roti & More.
+        You'll get a notification once it's accepted, and again when it's on its way.
       </Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Estimated delivery</Text>
-        <Text style={styles.cardValue}>35–45 minutes</Text>
+        <Text style={styles.cardTitle}>Status</Text>
+        <Text style={styles.cardValue}>Pending approval</Text>
       </View>
 
       <PrimaryButton

@@ -1,26 +1,64 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../api/client';
 
-const PAYMENT_METHODS = [
-  { id: 'cod', label: 'Cash on delivery' },
-  { id: 'upi', label: 'UPI' },
-  { id: 'card', label: 'Credit / Debit card' },
+const TIME_SLOTS = [
+  { value: '09:00', label: '9:00 AM' },
+  { value: '11:00', label: '11:00 AM' },
+  { value: '13:00', label: '1:00 PM' },
+  { value: '15:00', label: '3:00 PM' },
+  { value: '17:00', label: '5:00 PM' },
+  { value: '19:00', label: '7:00 PM' },
 ];
 
-export default function CheckoutScreen({ navigation }) {
-  const { subtotal, placeOrder, user } = useCart();
-  const [address, setAddress] = useState('');
-  const [payment, setPayment] = useState('cod');
-  const deliveryFee = 30;
-  const total = subtotal + deliveryFee;
+function nextDays(count) {
+  const days = [];
+  const today = new Date();
+  for (let i = 1; i <= count; i += 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const iso = d.toISOString().split('T')[0];
+    const label = i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    days.push({ value: iso, label });
+  }
+  return days;
+}
 
-  const handlePlaceOrder = () => {
-    const order = placeOrder();
-    navigation.replace('OrderSuccess', { orderId: order.id });
+export default function CheckoutScreen({ navigation }) {
+  const { items, subtotal, clearCart } = useCart();
+  const { user } = useAuth();
+  const days = useMemo(() => nextDays(10), []);
+
+  const [deliveryDate, setDeliveryDate] = useState(null);
+  const [deliveryTime, setDeliveryTime] = useState(null);
+  const [remarks, setRemarks] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const canPlace = !!deliveryDate && !!deliveryTime && items.length > 0;
+
+  const handlePlaceOrder = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const order = await api.post('/orders', {
+        items: items.map((e) => ({ productId: e.item.id, quantity: e.quantity })),
+        deliveryDate,
+        deliveryTime,
+        remarks: remarks.trim() || undefined,
+      });
+      clearCart();
+      navigation.replace('OrderSuccess', { orderId: order.id });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,55 +67,74 @@ export default function CheckoutScreen({ navigation }) {
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivering to</Text>
-          <Text style={styles.userLine}>{user?.name} · {user?.phone}</Text>
-          <TextInput
-            style={styles.addressInput}
-            placeholder="Flat / house no., street, area, landmark"
-            placeholderTextColor={colors.slate}
-            multiline
-            value={address}
-            onChangeText={setAddress}
-          />
+          <Text style={styles.userLine}>{user?.cateringName || user?.name} · {user?.mobile}</Text>
+          <Text style={styles.addressLine}>{user?.address}</Text>
+          <Text style={styles.addressHint}>You can change your delivery address from Profile.</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment method</Text>
-          {PAYMENT_METHODS.map((m) => (
-            <Pressable
-              key={m.id}
-              style={[styles.paymentRow, payment === m.id && styles.paymentRowActive]}
-              onPress={() => setPayment(m.id)}
-            >
-              <View style={[styles.radio, payment === m.id && styles.radioActive]}>
-                {payment === m.id && <View style={styles.radioDot} />}
-              </View>
-              <Text style={styles.paymentLabel}>{m.label}</Text>
-            </Pressable>
-          ))}
+          <Text style={styles.sectionTitle}>Delivery date</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {days.map((d) => (
+              <Pressable
+                key={d.value}
+                style={[styles.chip, deliveryDate === d.value && styles.chipActive]}
+                onPress={() => setDeliveryDate(d.value)}
+              >
+                <Text style={[styles.chipText, deliveryDate === d.value && styles.chipTextActive]}>{d.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery time</Text>
+          <View style={styles.slotGrid}>
+            {TIME_SLOTS.map((t) => (
+              <Pressable
+                key={t.value}
+                style={[styles.chip, deliveryTime === t.value && styles.chipActive]}
+                onPress={() => setDeliveryTime(t.value)}
+              >
+                <Text style={[styles.chipText, deliveryTime === t.value && styles.chipTextActive]}>{t.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Notes for the kitchen (optional)</Text>
+          <TextInput
+            style={styles.remarksInput}
+            placeholder="e.g. less spicy, contact person on arrival"
+            placeholderTextColor={colors.slate}
+            multiline
+            value={remarks}
+            onChangeText={setRemarks}
+          />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Bill summary</Text>
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Subtotal</Text>
+            <Text style={styles.billLabel}>Subtotal ({items.length} item{items.length !== 1 ? 's' : ''})</Text>
             <Text style={styles.billValue}>₹{subtotal}</Text>
           </View>
-          <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Delivery fee</Text>
-            <Text style={styles.billValue}>₹{deliveryFee}</Text>
-          </View>
-          <View style={[styles.billRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total payable</Text>
-            <Text style={styles.totalValue}>₹{total}</Text>
-          </View>
+          <Text style={styles.billNote}>
+            Final total is confirmed by Roti & More when your order is accepted. Payment is
+            collected separately — no online payment is taken at checkout.
+          </Text>
         </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>
         <PrimaryButton
-          title={`Place order · ₹${total}`}
+          title={`Place order · ₹${subtotal}`}
           onPress={handlePlaceOrder}
-          disabled={!address.trim()}
+          disabled={!canPlace}
+          loading={loading}
           style={{ width: '100%' }}
         />
       </View>
@@ -101,10 +158,47 @@ const styles = StyleSheet.create({
   },
   userLine: {
     fontSize: 13.5,
+    color: colors.ink,
+    fontWeight: '600',
+  },
+  addressLine: {
+    fontSize: 13,
     color: colors.slate,
+    marginTop: 2,
+  },
+  addressHint: {
+    fontSize: 11.5,
+    color: colors.slate,
+    marginTop: spacing.sm,
+    fontStyle: 'italic',
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radii.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    marginRight: spacing.sm,
     marginBottom: spacing.sm,
   },
-  addressInput: {
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  chipTextActive: {
+    color: '#fff',
+  },
+  slotGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  remarksInput: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -112,43 +206,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     fontSize: 14,
     color: colors.ink,
-    minHeight: 80,
+    minHeight: 60,
     textAlignVertical: 'top',
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.sm,
-    marginBottom: 4,
-  },
-  paymentRowActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-  },
-  radioActive: {
-    borderColor: colors.primary,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-  },
-  paymentLabel: {
-    fontSize: 14,
-    color: colors.ink,
-    fontWeight: '600',
   },
   billRow: {
     flexDirection: 'row',
@@ -157,14 +216,19 @@ const styles = StyleSheet.create({
   },
   billLabel: { fontSize: 13.5, color: colors.slate },
   billValue: { fontSize: 13.5, color: colors.ink, fontWeight: '600' },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 8,
-    marginTop: 4,
+  billNote: {
+    fontSize: 12,
+    color: colors.slate,
+    marginTop: spacing.sm,
+    lineHeight: 17,
   },
-  totalLabel: { fontSize: 15, fontWeight: '800', color: colors.ink },
-  totalValue: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+  },
   footer: {
     position: 'absolute',
     bottom: 0,

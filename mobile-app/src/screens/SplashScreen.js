@@ -1,20 +1,28 @@
 import React, { useEffect } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 
 export default function SplashScreen({ navigation }) {
+  const { bootstrapping, isAuthenticated, user } = useAuth();
+
   useEffect(() => {
-    const t = setTimeout(() => {
+    if (bootstrapping) return;
+    if (!isAuthenticated) {
       navigation.replace('Login');
-    }, 1400);
-    return () => clearTimeout(t);
-  }, [navigation]);
+    } else if (!user?.profileDone) {
+      navigation.replace('ProfileSetup');
+    } else {
+      navigation.replace('MainTabs');
+    }
+  }, [bootstrapping, isAuthenticated, user, navigation]);
 
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/logo.png')} style={styles.logo} />
       <Text style={styles.brand}>Roti & More</Text>
       <Text style={styles.tagline}>Home-style meals, made fresh</Text>
+      <ActivityIndicator style={{ marginTop: 24 }} color={colors.primary} />
     </View>
   );
 }

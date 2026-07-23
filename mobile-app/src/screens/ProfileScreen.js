@@ -1,44 +1,42 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
-import { useCart } from '../context/CartContext';
-
-const MENU_ROWS = [
-  { icon: '📍', label: 'Saved addresses' },
-  { icon: '💳', label: 'Payment methods' },
-  { icon: '🔔', label: 'Notifications' },
-  { icon: '❓', label: 'Help & support' },
-  { icon: '📄', label: 'Terms & Privacy Policy' },
-];
+import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, setUser, orders } = useCart();
+  const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    setUser(null);
-    navigation.getParent()?.reset({
+  const handleLogout = async () => {
+    await logout();
+    navigation.getParent()?.getParent()?.reset({
       index: 0,
       routes: [{ name: 'Login' }],
     });
   };
 
+  const MENU_ROWS = [
+    { icon: '✏️', label: 'Edit profile', onPress: () => navigation.navigate('ProfileSetup', { isEdit: true }) },
+    { icon: '🔔', label: 'Notifications', onPress: () => navigation.navigate('Notifications') },
+    { icon: '❓', label: 'Help & support', onPress: () => {} },
+    { icon: '📄', label: 'Terms & Privacy Policy', onPress: () => {} },
+  ];
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <Image source={require('../../assets/logo.png')} style={styles.avatar} />
-        <Text style={styles.name}>{user?.name || 'Guest'}</Text>
-        <Text style={styles.phone}>{user?.phone}</Text>
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{orders.length}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
+        <Text style={styles.name}>{user?.cateringName || user?.name || 'Guest'}</Text>
+        <Text style={styles.phone}>{user?.mobile}</Text>
+        {user?.customerId ? (
+          <View style={styles.customerIdBadge}>
+            <Text style={styles.customerIdText}>{user.customerId}</Text>
           </View>
-        </View>
+        ) : null}
       </View>
 
       <View style={styles.menu}>
         {MENU_ROWS.map((row) => (
-          <Pressable key={row.label} style={styles.menuRow}>
+          <Pressable key={row.label} style={styles.menuRow} onPress={row.onPress}>
             <Text style={styles.menuIcon}>{row.icon}</Text>
             <Text style={styles.menuLabel}>{row.label}</Text>
             <Text style={styles.menuArrow}>›</Text>
@@ -78,23 +76,17 @@ const styles = StyleSheet.create({
     color: colors.slate,
     marginTop: 2,
   },
-  statsRow: {
-    flexDirection: 'row',
-    marginTop: spacing.md,
+  customerIdBadge: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radii.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
-  statBox: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
+  customerIdText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.primaryDark,
-  },
-  statLabel: {
-    fontSize: 11.5,
-    color: colors.slate,
-    marginTop: 2,
   },
   menu: {
     paddingHorizontal: spacing.lg,

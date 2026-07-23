@@ -1,25 +1,76 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
-import { useCart } from '../context/CartContext';
+import { api } from '../api/client';
+
+const STATUS_LABEL = {
+  pending: 'Pending approval',
+  approved: 'Approved',
+  completed: 'Completed',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+};
+const STATUS_COLOR = {
+  pending: colors.goldDark,
+  approved: colors.primary,
+  completed: colors.primaryDark,
+  rejected: colors.danger,
+  cancelled: colors.slate,
+};
 
 function StatusPill({ status }) {
   return (
-    <View style={styles.pill}>
-      <Text style={styles.pillText}>{status}</Text>
+    <View style={[styles.pill, { backgroundColor: `${STATUS_COLOR[status] || colors.slate}22` }]}>
+      <Text style={[styles.pillText, { color: STATUS_COLOR[status] || colors.slate }]}>
+        {STATUS_LABEL[status] || status}
+      </Text>
     </View>
   );
 }
 
-export default function OrdersScreen() {
-  const { orders } = useCart();
+export default function OrdersScreen({ navigation }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async (isRefresh) => {
+    isRefresh ? setRefreshing(true) : setLoading(true);
+    setError('');
+    try {
+      const rows = await api.get('/orders');
+      setOrders(rows);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(false); }, [load]));
+
+  if (loading) {
+    return (
+      <View style={styles.screen}>
+        <Header title="Your orders" />
+        <View style={styles.emptyWrap}><ActivityIndicator color={colors.primary} size="large" /></View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
       <Header title="Your orders" subtitle={`${orders.length} order${orders.length !== 1 ? 's' : ''}`} />
 
-      {orders.length === 0 ? (
+      {error ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>Couldn't load your orders</Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+        </View>
+      ) : orders.length === 0 ? (
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyEmoji}>📦</Text>
           <Text style={styles.emptyTitle}>No orders yet</Text>
@@ -28,24 +79,25 @@ export default function OrdersScreen() {
       ) : (
         <FlatList
           data={orders}
-          keyExtractor={(o) => o.id}
+          keyExtractor={(o) => String(o.id)}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
           renderItem={({ item: order }) => (
-            <View style={styles.card}>
+            <Pressable style={styles.card} onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}>
               <View style={styles.cardTop}>
-                <Text style={styles.orderId}>{order.id}</Text>
+                <Text style={styles.orderId}>Order #{order.id}</Text>
                 <StatusPill status={order.status} />
               </View>
               <Text style={styles.itemsLine} numberOfLines={2}>
-                {order.items.map((e) => `${e.quantity}× ${e.item.name}`).join(', ')}
+                {order.items.map((e) => `${e.quantity}× ${e.name}`).join(', ')}
               </Text>
               <View style={styles.cardBottom}>
                 <Text style={styles.date}>
-                  {new Date(order.placedAt).toLocaleString()}
+                  {order.deliveryDate} at {order.deliveryTime}
                 </Text>
                 <Text style={styles.total}>₹{order.total}</Text>
               </View>
-            </View>
+            </Pressable>
           )}
         />
       )}
@@ -79,7 +131,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   pill: {
-    backgroundColor: colors.primaryLight,
     borderRadius: radii.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -87,7 +138,6 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: colors.primaryDark,
   },
   itemsLine: {
     fontSize: 13,

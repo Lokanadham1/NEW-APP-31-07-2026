@@ -7,53 +7,75 @@ import {
   TextInput,
   StyleSheet,
   Pressable,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
-import { categories, menuItems, featuredIds } from '../data/menuData';
+import { iconForCategory } from '../theme/categoryIcons';
 import CategoryCard from '../components/CategoryCard';
 import MenuItemCard from '../components/MenuItemCard';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { useProducts } from '../context/ProductsContext';
 
 export default function HomeScreen({ navigation }) {
   const [query, setQuery] = useState('');
-  const { addToCart, user } = useCart();
+  const { addToCart } = useCart();
+  const { user } = useAuth();
+  const { products, loading, error, refresh } = useProducts();
 
-  const featured = useMemo(
-    () => menuItems.filter((i) => featuredIds.includes(i.id)),
-    []
-  );
+  const categories = useMemo(() => {
+    const names = [...new Set(products.map((p) => p.category).filter(Boolean))];
+    return names.map((name) => ({ id: name, name, emoji: iconForCategory(name) }));
+  }, [products]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return menuItems.filter(
-      (i) => i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)
+    return products.filter(
+      (i) => i.name.toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, products]);
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, styles.centered]}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+      >
         <View style={styles.topBar}>
           <View>
             <Text style={styles.greeting}>
-              Hi {user?.name?.split(' ')[0] || 'there'} 👋
+              Hi {(user?.name || user?.cateringName || 'there').split(' ')[0]} 👋
             </Text>
-            <Text style={styles.location}>Delivering to Hyderabad</Text>
+            <Text style={styles.location}>{user?.address || 'Add your delivery address'}</Text>
           </View>
         </View>
 
         <View style={styles.searchWrap}>
           <TextInput
             style={styles.search}
-            placeholder="Search for rotis, curries, biryani..."
+            placeholder="Search the menu..."
             placeholderTextColor={colors.slate}
             value={query}
             onChangeText={setQuery}
           />
         </View>
 
-        {query.trim() ? (
+        {error ? (
+          <View style={styles.section}>
+            <Text style={styles.errorText}>Couldn't load the menu: {error}</Text>
+            <Pressable onPress={refresh}><Text style={styles.retryText}>Tap to retry</Text></Pressable>
+          </View>
+        ) : query.trim() ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               {filtered.length} result{filtered.length !== 1 ? 's' : ''}
@@ -79,9 +101,7 @@ export default function HomeScreen({ navigation }) {
                 renderItem={({ item }) => (
                   <CategoryCard
                     category={item}
-                    onPress={() =>
-                      navigation.navigate('Menu', { categoryId: item.id })
-                    }
+                    onPress={() => navigation.navigate('Menu', { categoryId: item.id })}
                   />
                 )}
               />
@@ -91,19 +111,19 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.banner}>
                 <Text style={styles.bannerTitle}>Fresh Tandoor Rotis</Text>
                 <Text style={styles.bannerSubtitle}>
-                  Hand-rolled daily, served hot to your door
+                  Hand-rolled daily, made to order for your event
                 </Text>
               </View>
             </View>
 
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Popular right now</Text>
+                <Text style={styles.sectionTitle}>Full menu</Text>
                 <Pressable onPress={() => navigation.navigate('Menu', { categoryId: null })}>
                   <Text style={styles.seeAll}>See all</Text>
                 </Pressable>
               </View>
-              {featured.map((item) => (
+              {products.slice(0, 6).map((item) => (
                 <MenuItemCard
                   key={item.id}
                   item={item}
@@ -123,6 +143,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.cream,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   topBar: {
     paddingHorizontal: spacing.lg,
@@ -192,5 +216,14 @@ const styles = StyleSheet.create({
   bannerSubtitle: {
     fontSize: 13,
     color: '#EAF5EC',
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13.5,
+  },
+  retryText: {
+    color: colors.primary,
+    fontWeight: '700',
+    marginTop: 6,
   },
 });

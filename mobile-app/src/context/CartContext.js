@@ -3,9 +3,7 @@ import React, { createContext, useContext, useMemo, useState, useCallback } from
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
-  const [items, setItems] = useState([]); // { item, quantity }
-  const [orders, setOrders] = useState([]); // past placed orders
-  const [user, setUser] = useState(null); // { name, phone }
+  const [items, setItems] = useState([]); // { item, quantity } — item is a product row from the API
 
   const addToCart = useCallback((item, quantity = 1) => {
     setItems((prev) => {
@@ -38,20 +36,6 @@ export function CartProvider({ children }) {
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const placeOrder = useCallback(() => {
-    const total = items.reduce((sum, e) => sum + e.item.price * e.quantity, 0);
-    const order = {
-      id: `ORD-${Date.now().toString().slice(-6)}`,
-      items,
-      total,
-      placedAt: new Date().toISOString(),
-      status: 'Preparing',
-    };
-    setOrders((prev) => [order, ...prev]);
-    setItems([]);
-    return order;
-  }, [items]);
-
   const subtotal = useMemo(
     () => items.reduce((sum, e) => sum + e.item.price * e.quantity, 0),
     [items]
@@ -70,10 +54,6 @@ export function CartProvider({ children }) {
     clearCart,
     subtotal,
     itemCount,
-    orders,
-    placeOrder,
-    user,
-    setUser,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

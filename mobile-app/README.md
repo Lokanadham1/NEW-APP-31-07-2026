@@ -1,53 +1,91 @@
 # Roti & More — Android App
 
-A complete, ready-to-build React Native (Expo) food ordering app, styled with
-your CJ / Roti & More crest logo (forest green + gold on cream).
+A React Native (Expo) catering order app, styled with your CJ / Roti & More
+crest logo (forest green + gold on cream). Talks to the real backend in
+`../backend` — mobile-OTP login, live product catalog, order placement with
+admin approval, payment tracking, and notifications.
 
 ## What's included
 
-Full source for a real, working app — not a mockup:
+- **Splash screen** — restores your session and routes you straight to Home,
+  profile setup, or Login depending on what's saved.
+- **Login** — mobile number + OTP (via the backend's `/auth/request-otp` /
+  `/auth/verify-otp`; swaps to Firebase Phone Auth once wired, see below).
+- **Profile setup** — name, catering/business name, delivery address
+  (required once before you can order — matches the backend's `profile_done`
+  gate).
+- **Home** — greeting, search, categories and menu pulled live from
+  `GET /products`.
+- **Menu** — browse by category.
+- **Item detail** — quantity selector, add to cart, shows out-of-stock items.
+- **Cart** — edit quantities, running subtotal.
+- **Checkout** — pick a delivery date/time slot, optional notes, places the
+  order via `POST /orders` (no online payment — Roti & More collects payment
+  separately and records it in the admin dashboard).
+- **Orders** — live status (pending/approved/completed/rejected/cancelled),
+  tap into an order to cancel (within 6h while pending), reschedule (once),
+  or edit the delivery address (once) — all backed by the real API.
+- **Notifications** — order updates from Roti & More, mark read / mark all read.
+- **Profile** — real account info, edit profile, logout.
 
-- **Splash screen** with your logo
-- **Login** (name + phone, local demo auth — swap in real auth later)
-- **Home** — greeting, search, categories, popular dishes
-- **Menu** — browse by category (Rotis, Curries, Rice/Biryani, Starters, Drinks, Desserts)
-- **Item detail** — quantity selector, add to cart
-- **Cart** — edit quantities, subtotal/delivery/total
-- **Checkout** — delivery address, payment method choice, place order
-- **Order success** + **Order history / tracking**
-- **Profile** — account info, settings menu, logout
-- Bottom tab navigation, consistent green/gold theme throughout
+## 1. Run it locally
 
-All data (menu items, prices) is demo data in `src/data/menuData.js` — edit
-this file to reflect your real menu, or wire it up to a backend later (see
-"Going live" below).
-
-## 1. Run it locally (test on your own phone in minutes)
-
-You'll need [Node.js](https://nodejs.org) (LTS) installed on your computer.
+You'll need [Node.js](https://nodejs.org) (LTS) and the backend running
+(see `../backend/README.md`) — the app has nothing to talk to without it.
 
 ```bash
-cd roti-and-more
+cd mobile-app
 npm install
+cp .env.example .env      # set EXPO_PUBLIC_API_URL — see comments in the file
 npx expo start
 ```
 
 This prints a QR code. Install the **Expo Go** app from the Play Store on
 your Android phone, scan the QR code, and the app opens live on your device.
-Any code changes you make will reload instantly.
+Any code changes reload instantly.
 
-## 2. Customize before publishing
+- **Android emulator**: the default `.env.example` value
+  (`http://10.0.2.2:4000`) already points at your computer's localhost.
+- **Physical phone via Expo Go**: your phone and computer must be on the
+  same Wi-Fi; set `EXPO_PUBLIC_API_URL` to your computer's LAN IP instead
+  (e.g. `http://192.168.1.50:4000`).
+- **Testing OTP without paying for SMS**: leave the backend's
+  `OTP_PROVIDER` empty (dev mode). The Login screen shows the generated code
+  on-screen so you can log in without a real text message.
+
+## 2. Swapping in Firebase Phone Auth (production OTP)
+
+The backend already has `POST /auth/firebase` ready to verify Firebase ID
+tokens (see `backend/DEPLOYMENT.md` steps 1–2 to create the Firebase
+project). Wiring the mobile side requires:
+
+1. Add an Android app to your Firebase project with package name
+   `com.rotiandmore.app`, download `google-services.json` into `mobile-app/`.
+2. Install `@react-native-firebase/app` + `@react-native-firebase/auth` (this
+   requires an EAS **development build**, not Expo Go, since it adds native
+   code) and register your app's SHA-1/SHA-256 fingerprints in the Firebase
+   console for Play Integrity.
+3. In `LoginScreen.js`, replace the `requestOtp`/`verifyOtp` calls with the
+   Firebase Auth `signInWithPhoneNumber` flow, then POST the resulting ID
+   token to `/auth/firebase` instead of `/auth/verify-otp`.
+
+This is a separate step because it depends on your Firebase project
+existing first — the dev-mode OTP flow above is fully functional in the
+meantime for testing everything else end-to-end.
+
+## 3. Customize before publishing
 
 - **App name / package ID**: edit `app.json` → `expo.name` and
-  `expo.android.package` (must be unique, reverse-domain style, e.g.
-  `com.yourcompany.rotiandmore`). You cannot change the package ID after
-  your first Play Store upload, so pick it carefully.
-- **Menu & prices**: `src/data/menuData.js`
-- **Colors**: `src/theme/colors.js` (already set from your logo)
+  `expo.android.package` (must be unique, reverse-domain style). You cannot
+  change the package ID after your first Play Store upload, so pick it
+  carefully.
+- **Menu & prices**: managed from the backend/admin dashboard, not in the
+  app — add products via `POST /products` (or the admin dashboard once built).
+- **Colors**: `src/theme/colors.js` (already set from your logo).
 - **Icon/splash image**: replace the files in `assets/` (same filenames) if
   you want a different icon than the crest logo.
 
-## 3. Build a real Android app file (AAB) to upload to Google Play
+## 4. Build a real Android app file (AAB) to upload to Google Play
 
 Google requires an **Android App Bundle (.aab)**, not just an APK, for new
 Play Store apps. The easiest way to produce one without installing Android
@@ -64,55 +102,47 @@ This uploads your project to Expo's servers, builds the `.aab` in the cloud,
 and gives you a download link when it's done (usually 10–20 minutes). No
 Mac, no Android Studio, no local Android SDK required.
 
+Set `EXPO_PUBLIC_API_URL` to your **production** backend URL before running
+this (either in `.env` or via `eas.json` build profile env vars) — otherwise
+the built app will try to talk to your local dev machine.
+
 (If you'd rather build locally with Android Studio, `npx expo prebuild`
 generates a native `android/` folder you can open and build with Gradle
-directly — useful if you want full native control later.)
+directly.)
 
-## 4. Publish to Google Play Console
+## 5. Publish to Google Play Console
 
 1. Create a [Google Play Console](https://play.google.com/console) developer
    account (one-time $25 fee).
 2. Create a new app, fill in your store listing: app name, short/full
-   description, screenshots (take these from Expo Go or a built APK),
-   category (Food & Drink), and your **privacy policy URL** — Google
-   requires this even for simple apps; a free one-page policy generator
-   works fine to start.
+   description, screenshots, category (Food & Drink), and your **privacy
+   policy URL** — Google requires this even for simple apps.
 3. Under **Production → Create new release**, upload the `.aab` file from
-   step 3.
+   step 4.
 4. Complete the required Data Safety form, content rating questionnaire, and
    target audience section.
 5. Submit for review. First-time app reviews typically take a few hours to
    a few days.
 
-## 5. Going live for real (optional next steps)
-
-Right now orders, login, and the menu use local/demo data so you can test
-and publish quickly. When you're ready to take real orders, you'll want:
-
-- A backend (e.g. Firebase, Supabase, or a custom API) for the menu, orders,
-  and accounts
-- Real authentication (OTP/SMS or email)
-- A payment gateway (Razorpay, PayU, Stripe, etc. — required for UPI/card
-  payments in India)
-- Push notifications for order status updates
-
-I'm happy to help wire any of these up — just let me know which one you
-want first (this determines how much extra setup, like paid services or
-API keys, will be needed).
+(Full guided steps for this land in the release phase of the project.)
 
 ## Project structure
 
 ```
-roti-and-more/
-├── App.js                     # entry point
-├── app.json                   # Expo/Android config (name, package id, icons)
-├── eas.json                   # cloud build config
-├── assets/                    # logo/icon/splash images
+mobile-app/
+├── App.js                        # entry point — wraps providers
+├── app.json                      # Expo/Android config (name, package id, icons)
+├── eas.json                      # cloud build config
+├── assets/                       # logo/icon/splash images
 └── src/
-    ├── theme/colors.js        # brand colors, spacing, type scale
-    ├── data/menuData.js       # menu items & categories (demo data)
-    ├── context/CartContext.js # cart + order state
+    ├── config.js                 # API_URL (from EXPO_PUBLIC_API_URL)
+    ├── api/client.js             # fetch wrapper, attaches JWT, error handling
+    ├── theme/                    # colors, spacing, category icons
+    ├── context/
+    │   ├── AuthContext.js        # session, OTP login, profile
+    │   ├── ProductsContext.js    # live product catalog
+    │   └── CartContext.js        # in-progress cart (local only)
     ├── navigation/AppNavigator.js
-    ├── components/            # reusable UI (buttons, cards, header)
-    └── screens/                # one file per screen
+    ├── components/                # reusable UI (buttons, cards, header)
+    └── screens/                   # one file per screen
 ```

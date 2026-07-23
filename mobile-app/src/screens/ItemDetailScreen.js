@@ -1,14 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
-import { menuItems } from '../data/menuData';
+import { iconForCategory } from '../theme/categoryIcons';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
 import { useCart } from '../context/CartContext';
+import { useProducts } from '../context/ProductsContext';
 
 export default function ItemDetailScreen({ route, navigation }) {
   const { itemId } = route.params;
-  const item = useMemo(() => menuItems.find((i) => i.id === itemId), [itemId]);
+  const { products } = useProducts();
+  const item = useMemo(() => products.find((i) => i.id === itemId), [itemId, products]);
   const [qty, setQty] = useState(1);
   const { addToCart } = useCart();
 
@@ -20,6 +22,8 @@ export default function ItemDetailScreen({ route, navigation }) {
     );
   }
 
+  const available = item.status !== 'out_of_stock';
+
   const handleAdd = () => {
     addToCart(item, qty);
     navigation.navigate('Cart');
@@ -30,56 +34,50 @@ export default function ItemDetailScreen({ route, navigation }) {
       <Header title="Dish details" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.heroThumb}>
-          <Text style={styles.heroEmoji}>🍽️</Text>
+          <Text style={styles.heroEmoji}>{iconForCategory(item.category)}</Text>
         </View>
 
         <View style={styles.body}>
-          <View style={styles.titleRow}>
-            <View
-              style={[
-                styles.vegBox,
-                { borderColor: item.veg ? colors.success : colors.danger },
-              ]}
-            >
-              <View
-                style={[
-                  styles.vegDot,
-                  { backgroundColor: item.veg ? colors.success : colors.danger },
-                ]}
-              />
-            </View>
-            <Text style={styles.name}>{item.name}</Text>
-          </View>
+          <Text style={styles.name}>{item.name}</Text>
+          {item.category ? <Text style={styles.category}>{item.category}</Text> : null}
+          {item.description ? <Text style={styles.desc}>{item.description}</Text> : null}
 
-          <Text style={styles.rating}>★ {item.rating} rating</Text>
-          <Text style={styles.desc}>{item.description}</Text>
+          {!available ? (
+            <View style={styles.outOfStockBanner}>
+              <Text style={styles.outOfStockText}>Currently out of stock</Text>
+            </View>
+          ) : null}
 
           <View style={styles.priceRow}>
             <Text style={styles.price}>₹{item.price}</Text>
 
-            <View style={styles.stepper}>
-              <Pressable
-                style={styles.stepBtn}
-                onPress={() => setQty((q) => Math.max(1, q - 1))}
-              >
-                <Text style={styles.stepBtnText}>–</Text>
-              </Pressable>
-              <Text style={styles.stepValue}>{qty}</Text>
-              <Pressable style={styles.stepBtn} onPress={() => setQty((q) => q + 1)}>
-                <Text style={styles.stepBtnText}>+</Text>
-              </Pressable>
-            </View>
+            {available ? (
+              <View style={styles.stepper}>
+                <Pressable
+                  style={styles.stepBtn}
+                  onPress={() => setQty((q) => Math.max(1, q - 1))}
+                >
+                  <Text style={styles.stepBtnText}>–</Text>
+                </Pressable>
+                <Text style={styles.stepValue}>{qty}</Text>
+                <Pressable style={styles.stepBtn} onPress={() => setQty((q) => q + 1)}>
+                  <Text style={styles.stepBtnText}>+</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <PrimaryButton
-          title={`Add ${qty} to cart · ₹${item.price * qty}`}
-          onPress={handleAdd}
-          style={{ width: '100%' }}
-        />
-      </View>
+      {available ? (
+        <View style={styles.footer}>
+          <PrimaryButton
+            title={`Add ${qty} to cart · ₹${item.price * qty}`}
+            onPress={handleAdd}
+            style={{ width: '100%' }}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -103,32 +101,13 @@ const styles = StyleSheet.create({
   body: {
     padding: spacing.lg,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  vegBox: {
-    width: 16,
-    height: 16,
-    borderWidth: 1.5,
-    borderRadius: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  vegDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
   name: {
     fontSize: 22,
     fontWeight: '800',
     color: colors.ink,
-    flexShrink: 1,
+    marginBottom: 4,
   },
-  rating: {
+  category: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.goldDark,
@@ -139,6 +118,18 @@ const styles = StyleSheet.create({
     color: colors.slate,
     lineHeight: 21,
     marginBottom: spacing.lg,
+  },
+  outOfStockBanner: {
+    backgroundColor: '#FBEAE6',
+    borderRadius: radii.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  outOfStockText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 13,
+    textAlign: 'center',
   },
   priceRow: {
     flexDirection: 'row',
