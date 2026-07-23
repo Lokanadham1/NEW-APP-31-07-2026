@@ -80,6 +80,17 @@ issues the same JWT (same allowlist logic as `/auth/verify-otp`). Set
 | GET | `/notifications` | user: own · admin: broadcast (`user_id=0`) |
 | POST | `/notifications/:id/read` | |
 | POST | `/notifications/read-all` | |
+| POST | `/me/push-token` | `{token, platform}` | registers an FCM device token for push |
+| DELETE | `/me/push-token` | `{token}` | unregisters (call on logout) |
+
+Every `notify()` call (new order → admins, accept/reject/deliver/payment → the
+customer, cancel/reschedule/address-edit → the other party) writes the in-app
+notification row **and** best-effort pushes it via FCM to whichever device
+tokens that audience has registered. Push is entirely optional: with
+`FIREBASE_SERVICE_ACCOUNT` unset it silently no-ops — nothing breaks, you just
+don't get pushes, so you can develop everything else before setting up
+Firebase. Dead tokens (uninstalled app) are pruned automatically from FCM's
+response.
 
 ## Business rules enforced server-side
 - Order totals are recomputed from live product prices — client amounts are ignored.

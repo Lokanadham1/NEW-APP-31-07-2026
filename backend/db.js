@@ -85,6 +85,13 @@ async function initSchema() {
       created_date TEXT NOT NULL,
       created_at   TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS push_tokens (
+      token      TEXT PRIMARY KEY,     -- FCM device registration token
+      user_id    INTEGER NOT NULL REFERENCES users(id),
+      platform   TEXT NOT NULL DEFAULT 'android',
+      created_at TEXT NOT NULL
+    );
   `);
 }
 

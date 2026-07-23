@@ -23,12 +23,40 @@ const nowIso = () => new Date().toISOString();
 const h = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 // ─── Notification helper ─────────────────────────────────────────────────────
+// Writes the in-app notification row (source of truth, always works) and,
+// best-effort, pushes it via FCM to whichever device tokens the audience has
+// registered. userId 0 means "all admins" — resolved to their tokens here.
 async function notify(userId, message) {
   await query(
     `INSERT INTO notifications (user_id, message, read, created_date, created_at)
      VALUES ($1, $2, false, $3, $4)`,
     [userId, message, today(), nowIso()]
   );
+  await pushToUser(userId, message);
+}
+
+async function pushToUser(userId, message) {
+  try {
+    const { rows } = userId === 0
+      ? await query(
+          `SELECT pt.token FROM push_tokens pt
+           JOIN users u ON u.id = pt.user_id WHERE u.role='admin'`
+        )
+      : await query('SELECT token FROM push_tokens WHERE user_id=$1', [userId]);
+    if (!rows.length) return;
+    const tokens = rows.map((r) => r.token);
+    const { sendPush } = require('./firebase');
+    const { deadTokens } = await sendPush(tokens, {
+      title: 'Roti & More',
+      body: message,
+      data: { userId: String(userId) },
+    });
+    for (const t of deadTokens) {
+      await query('DELETE FROM push_tokens WHERE token=$1', [t]);
+    }
+  } catch (e) {
+    console.error('pushToUser failed:', e.message); // never let push errors break the request
+  }
 }
 
 async function getOrder(id) {
@@ -89,6 +117,30 @@ app.post('/auth/firebase', h(async (req, res) => {
   } catch (e) {
     res.status(401).json({ error: e.message || 'Firebase verification failed.' });
   }
+}));
+
+// ══════════════════════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS (FCM device token registration)
+// ══════════════════════════════════════════════════════════════════════════
+// A token belongs to whichever user last registered it (ON CONFLICT reassigns
+// it) — covers logout/login as a different account on the same device.
+app.post('/me/push-token', authRequired, h(async (req, res) => {
+  const { token, platform } = req.body;
+  if (!token) return res.status(400).json({ error: 'Missing token.' });
+  await query(
+    `INSERT INTO push_tokens (token, user_id, platform, created_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (token) DO UPDATE SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform`,
+    [token, req.user.id, platform || 'android', nowIso()]
+  );
+  res.json({ ok: true });
+}));
+
+app.delete('/me/push-token', authRequired, h(async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: 'Missing token.' });
+  await query('DELETE FROM push_tokens WHERE token=$1 AND user_id=$2', [token, req.user.id]);
+  res.json({ ok: true });
 }));
 
 // ══════════════════════════════════════════════════════════════════════════
