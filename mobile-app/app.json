@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Roti & More",
+    "slug": "roti-and-more",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "rotiandmore",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFBF2"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.rotiandmore.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFBF2"
+      },
+      "permissions": []
+    },
+    "ios": {
+      "bundleIdentifier": "com.rotiandmore.app",
+      "supportsTablet": false
+    },
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

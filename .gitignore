@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Env files (never commit secrets)
+.env
+.env.local
+
+# Backend runtime data
+backend/*.db
+backend/roti.db
+backend/serviceAccountKey.json
+
+# Expo / RN
+mobile-app/.expo/
+mobile-app/dist/
+mobile-app/web-build/
+
+# Admin web (added in a later phase)
+admin-web/node_modules/
+admin-web/dist/
+
+# OS / editor
+.DS_Store
+*.log
