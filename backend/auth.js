@@ -1,6 +1,6 @@
 // auth.js — OTP generation/verification, JWT issue/verify, role middleware.
 const jwt = require('jsonwebtoken');
-const { db, mapUser } = require('./db');
+const { query, mapUser } = require('./db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const OTP_TTL = (parseInt(process.env.OTP_TTL_SECONDS, 10) || 300) * 1000;
@@ -11,27 +11,28 @@ const adminSet = new Set(
 );
 
 const isValidMobile = (m) => /^\d{10}$/.test(m || '');
-const nextCustomerId = () => {
-  const row = db.prepare(
+
+async function nextCustomerId() {
+  const { rows } = await query(
     `SELECT customer_id FROM users WHERE customer_id IS NOT NULL
      ORDER BY customer_id DESC LIMIT 1`
-  ).get();
-  const n = row ? parseInt(row.customer_id.replace('CUS', ''), 10) + 1 : 1;
+  );
+  const n = rows[0] ? parseInt(rows[0].customer_id.replace('CUS', ''), 10) + 1 : 1;
   return 'CUS' + String(n).padStart(4, '0');
-};
+}
 
 // ─── OTP ────────────────────────────────────────────────────────────────────
 async function sendOtp(mobile) {
   const code = String(Math.floor(1000 + Math.random() * 9000)); // 4-digit
-  db.prepare(
+  await query(
     `INSERT INTO otps (mobile, code, expires_at, attempts)
-     VALUES (?, ?, ?, 0)
-     ON CONFLICT(mobile) DO UPDATE SET code=excluded.code,
-       expires_at=excluded.expires_at, attempts=0`
-  ).run(mobile, code, Date.now() + OTP_TTL);
+     VALUES ($1, $2, $3, 0)
+     ON CONFLICT (mobile) DO UPDATE SET code = EXCLUDED.code,
+       expires_at = EXCLUDED.expires_at, attempts = 0`,
+    [mobile, code, Date.now() + OTP_TTL]
+  );
 
   const provider = (process.env.OTP_PROVIDER || '').toLowerCase();
-  const text = `Your Roti & More verification code is ${code}. Valid for 5 minutes.`;
 
   if (provider === 'msg91') {
     await fetch('https://control.msg91.com/api/v5/otp', {
@@ -59,41 +60,44 @@ async function sendOtp(mobile) {
     return { sent: true };
   }
   // firebase: OTP is handled entirely on the client SDK; backend only verifies
-  // the resulting Firebase ID token (see verifyFirebase note in README).
+  // the resulting Firebase ID token (see POST /auth/firebase below).
 
   // DEV mode — no provider configured.
   console.log(`[OTP] ${mobile} -> ${code} (dev mode, not really sent)`);
   return { sent: true, devCode: code };
 }
 
-function verifyOtp(mobile, code) {
-  const row = db.prepare('SELECT * FROM otps WHERE mobile = ?').get(mobile);
+async function verifyOtp(mobile, code) {
+  const { rows } = await query('SELECT * FROM otps WHERE mobile = $1', [mobile]);
+  const row = rows[0];
   if (!row) return { ok: false, error: 'Request an OTP first.' };
   if (row.attempts >= 5) return { ok: false, error: 'Too many attempts. Request a new code.' };
-  if (Date.now() > row.expires_at) return { ok: false, error: 'Code expired. Request a new one.' };
+  if (Date.now() > Number(row.expires_at)) return { ok: false, error: 'Code expired. Request a new one.' };
   if (String(code) !== row.code) {
-    db.prepare('UPDATE otps SET attempts = attempts + 1 WHERE mobile = ?').run(mobile);
+    await query('UPDATE otps SET attempts = attempts + 1 WHERE mobile = $1', [mobile]);
     return { ok: false, error: 'Incorrect code.' };
   }
-  db.prepare('DELETE FROM otps WHERE mobile = ?').run(mobile);
+  await query('DELETE FROM otps WHERE mobile = $1', [mobile]);
   return { ok: true };
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────
-function findOrCreateUser(mobile) {
-  let u = db.prepare('SELECT * FROM users WHERE mobile = ?').get(mobile);
+async function findOrCreateUser(mobile) {
+  let { rows } = await query('SELECT * FROM users WHERE mobile = $1', [mobile]);
+  let u = rows[0];
   const role = adminSet.has(mobile) ? 'admin' : 'user';
   const now = new Date().toISOString();
   if (!u) {
-    const customerId = role === 'admin' ? null : nextCustomerId();
-    const info = db.prepare(
+    const customerId = role === 'admin' ? null : await nextCustomerId();
+    const ins = await query(
       `INSERT INTO users (mobile, customer_id, role, profile_done, created_at)
-       VALUES (?, ?, ?, ?, ?)`
-    ).run(mobile, customerId, role, role === 'admin' ? 1 : 0, now);
-    u = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [mobile, customerId, role, role === 'admin', now]
+    );
+    u = ins.rows[0];
   } else if (u.role !== role) {
     // keep role in sync if the allowlist changed
-    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, u.id);
+    await query('UPDATE users SET role = $1 WHERE id = $2', [role, u.id]);
     u.role = role;
   }
   return u;
@@ -107,13 +111,14 @@ function issueToken(user) {
 }
 
 // ─── Middleware ─────────────────────────────────────────────────────────────
-function authRequired(req, res, next) {
+async function authRequired(req, res, next) {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Missing token' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    const u = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.sub);
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub]);
+    const u = rows[0];
     if (!u) return res.status(401).json({ error: 'User not found' });
     req.user = u;              // raw row
     req.userApi = mapUser(u);  // api shape

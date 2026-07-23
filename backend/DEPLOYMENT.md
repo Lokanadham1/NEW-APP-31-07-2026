@@ -1,99 +1,81 @@
-# Deployment Guide — Roti & More
+# Backend Deployment Guide — Roti & More
 
-Get the backend and frontend live. Order: **integrate & test locally → deploy
-backend → deploy frontend → point the app at the live API → go-live checks.**
-
----
-
-## 0. Before deploying
-- [ ] Applied `INTEGRATION.md` — the React app calls the API, not `localStorage`.
-- [ ] Tested locally: backend (`npm start`) + app (`npm run dev`), logged in as
-      customer and admin, placed → accepted → paid an order.
-- [ ] Chose an OTP path: dev mode (testing) or Firebase (`FIREBASE_SETUP.md`).
+This covers deploying just the backend API. Mobile app build/release steps live in
+`mobile-app/README.md`; admin dashboard deployment will get its own section once
+`admin-web/` is built (Phase 5 of the project roadmap).
 
 ---
 
-## 1. Deploy the backend (Render — free tier example)
-Any Node host works (Render, Railway, Fly.io, a VPS). Render steps:
+## 1. Create a free Postgres database
+
+Either works — both have a generous free tier and give you a `DATABASE_URL` connection
+string immediately:
+
+- **[Supabase](https://supabase.com)** → New project → Settings → Database → Connection
+  string → **URI** (use the "Transaction" pooler string for serverless-style hosts).
+- **[Neon](https://neon.tech)** → New project → Connection string (already in the right format).
+
+Either way you'll get something like:
+```
+postgresql://<user>:<password>@<host>:5432/<database>?sslmode=require
+```
+
+## 2. Create a free Firebase project (for OTP)
+
+1. [Firebase console](https://console.firebase.google.com) → Add project (free Spark plan).
+2. Authentication → Sign-in method → enable **Phone**.
+3. Project settings → Service accounts → **Generate new private key** → downloads a JSON file.
+   This file is a secret — never commit it. You'll upload it to your host as an env var or file.
+
+## 3. Deploy the backend (Render — free tier example)
+
+Any Node host works (Render, Railway, Fly.io, a VPS) — these steps are for Render:
 
 1. Push the repo to GitHub.
-2. Render → **New → Web Service** → pick the repo, root dir `backend`.
+2. Render → **New → Web Service** → pick the repo, root directory `backend`.
 3. Build command: `npm install` · Start command: `npm start`.
-4. **Add a persistent disk** (Render → Disks), mount at `/data`. SQLite needs a
-   real disk or it resets on every deploy.
-5. Environment variables:
+   No persistent disk needed — the database is Postgres, hosted elsewhere.
+4. Environment variables:
    ```
+   DATABASE_URL=<your Supabase/Neon connection string>
    JWT_SECRET=<long random string>
-   ADMIN_MOBILES=7730001663
-   DB_PATH=/data/roti.db
-   CORS_ORIGIN=https://your-frontend-domain
-   OTP_PROVIDER=firebase           # or empty for dev
-   FIREBASE_SERVICE_ACCOUNT=/data/serviceAccountKey.json   # upload the file to the disk
+   ADMIN_MOBILES=<owner's 10-digit mobile number(s), comma-separated>
+   CORS_ORIGIN=<your mobile app / admin dashboard origins, comma-separated>
+   OTP_PROVIDER=firebase
+   FIREBASE_SERVICE_ACCOUNT=/etc/secrets/serviceAccountKey.json
    ```
-6. Deploy. Note the URL, e.g. `https://roti-api.onrender.com`.
-7. Seed once (Render Shell): `npm run seed` — or skip and let real data accrue.
-8. Check `GET /health` returns `{ ok: true }`.
+   For `FIREBASE_SERVICE_ACCOUNT`: Render → **Secret Files** → upload the JSON you downloaded
+   in step 2, mounted at that path.
+5. Deploy. Note the URL, e.g. `https://roti-api.onrender.com`.
+6. Seed once (Render Shell): `npm run seed` — creates tables and demo data. Skip this in a
+   real launch if you'd rather start with an empty catalog and add products via the admin
+   dashboard once it exists.
+7. Check `GET /health` returns `{ ok: true }`.
 
-> **Scaling later:** SQLite is fine for a single small instance. If you need
-> multiple instances or managed backups, switch `db.js` to Postgres
-> (`pg` + same queries) — the API layer doesn't change.
-
----
-
-## 2. Deploy the frontend (Netlify or Vercel)
-The app is Vite/React. Netlify steps:
-
-1. Netlify → **Add new site → import from Git** → repo root `roti-and-more-app`.
-2. Build command: `npm run build` · Publish dir: `dist`.
-3. Environment variables (Site settings → Environment):
-   ```
-   VITE_API_URL=https://roti-api.onrender.com
-   VITE_FB_API_KEY=...
-   VITE_FB_AUTH_DOMAIN=your-project.firebaseapp.com
-   VITE_FB_PROJECT_ID=your-project
-   VITE_FB_APP_ID=...
-   ```
-4. Deploy. Note the URL and put it in the backend's `CORS_ORIGIN`, then redeploy
-   the backend.
-5. In Firebase → Authentication → Settings → **Authorized domains**, add the
-   Netlify domain.
-
-The repo already has `netlify.toml` — verify its build settings match.
-
----
-
-## 3. Android app (optional — Capacitor)
-The project is Capacitor-ready (`android/`, `capacitor.config.ts`).
-
-1. Set the production web URL / build in `capacitor.config.ts`.
-2. `npm run build && npx cap sync android`
-3. `npx cap open android` → build a signed release in Android Studio.
-4. Upload the AAB to Google Play Console.
-- PWA install already works from the hosted site (`manifest.json` + service
-  worker are present) if you don't want the Play Store yet.
+> Render's free tier spins the service down after 15 minutes of inactivity (first request
+> after idle takes ~30s to wake up). Fine for testing; worth a paid instance ($7/mo) once
+> you have real customers who shouldn't see that delay.
 
 ---
 
 ## 4. Go-live checklist
 - [ ] `JWT_SECRET` is long and random (not the example).
 - [ ] `ADMIN_MOBILES` set to the real owner number(s) only.
-- [ ] `CORS_ORIGIN` locked to the frontend domain.
-- [ ] OTP provider live and tested on a real phone (or Firebase test numbers).
-- [ ] Backend on a **persistent disk**; take a first DB backup.
-- [ ] HTTPS on both (Render/Netlify give it automatically).
-- [ ] Product images: for real use, move from base64 to hosted URLs
-      (Cloudinary/Firebase Storage) to keep the DB small.
-- [ ] Add rate-limiting on `/auth/*` (e.g. `express-rate-limit`) to prevent OTP
-      abuse — recommended before public launch.
-- [ ] Verify the full flow on production: signup → order → admin accept → pay →
-      customer sees status.
+- [ ] `CORS_ORIGIN` locked to your actual app/admin origins.
+- [ ] OTP provider live and tested on a real phone.
+- [ ] HTTPS (Render gives it automatically).
+- [ ] Product images: use hosted URLs (Firebase Storage / Cloudinary), not base64, to keep
+      the database small — wired up in Phase 3/5.
+- [ ] Add rate-limiting on `/auth/*` (e.g. `express-rate-limit`) to prevent OTP abuse —
+      recommended before public launch.
+- [ ] Verify the full flow on production: signup → order → admin accept → pay → customer
+      sees status.
 
 ---
 
 ## 5. Recommended next hardening (post-launch)
 - `express-rate-limit` on auth routes.
-- Structured logging + error monitoring (Sentry).
-- DB backups (cron dumping `roti.db`, or managed Postgres).
-- Move OTP to Firebase test numbers off; monitor SMS spend.
+- Structured logging + error monitoring (Sentry free tier).
+- Scheduled Postgres backups (Supabase/Neon both offer this on free/low tiers).
 - Websockets or short polling so admin/customer see each other's changes live
-  (currently a `reload()` / manual refresh).
+  (currently the app must refresh/re-fetch).
