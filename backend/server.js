@@ -436,6 +436,25 @@ app.post('/notifications/read-all', authRequired, h(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Admin-composed notification — separate from the automatic ones `notify()`
+// sends on order events. userId omitted/null broadcasts to every customer
+// (each gets their own row + push, unlike the internal user_id=0 admin inbox).
+app.post('/notifications/send', authRequired, adminRequired, h(async (req, res) => {
+  const { userId, message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message required.' });
+  if (userId) {
+    const target = await getUser(userId);
+    if (!target || target.role !== 'user') return res.status(404).json({ error: 'Customer not found.' });
+    await notify(userId, message.trim());
+    return res.json({ ok: true, sentTo: 1 });
+  }
+  const { rows: customers } = await query("SELECT id FROM users WHERE role='user'");
+  for (const c of customers) {
+    await notify(c.id, message.trim());
+  }
+  res.json({ ok: true, sentTo: customers.length });
+}));
+
 // ─── Health + boot ───────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ ok: true, time: nowIso() }));
 

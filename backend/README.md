@@ -80,6 +80,7 @@ issues the same JWT (same allowlist logic as `/auth/verify-otp`). Set
 | GET | `/notifications` | user: own · admin: broadcast (`user_id=0`) |
 | POST | `/notifications/:id/read` | |
 | POST | `/notifications/read-all` | |
+| POST | `/notifications/send` | `{userId?, message}` | admin; omit `userId` to broadcast to every customer |
 | POST | `/me/push-token` | `{token, platform}` | registers an FCM device token for push |
 | DELETE | `/me/push-token` | `{token}` | unregisters (call on logout) |
 
