@@ -3,7 +3,10 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import { iconForCategory } from '../theme/categoryIcons';
 
-export default function MenuItemCard({ item, onPress, onAdd }) {
+// quantity: how many of this item are already in the cart (0 = not added).
+// When quantity > 0 the ADD button becomes a stepper, matching the cart
+// screen's -/qty/+ control instead of a silent no-feedback tap.
+export default function MenuItemCard({ item, onPress, onAdd, quantity = 0, onIncrease, onDecrease }) {
   const available = item.status !== 'out_of_stock';
 
   return (
@@ -22,9 +25,21 @@ export default function MenuItemCard({ item, onPress, onAdd }) {
         </View>
       </View>
       {available ? (
-        <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={8}>
-          <Text style={styles.addBtnText}>ADD</Text>
-        </Pressable>
+        quantity > 0 ? (
+          <View style={styles.stepper}>
+            <Pressable style={styles.stepBtn} onPress={onDecrease} hitSlop={8}>
+              <Text style={styles.stepBtnText}>–</Text>
+            </Pressable>
+            <Text style={styles.stepValue}>{quantity}</Text>
+            <Pressable style={styles.stepBtn} onPress={onIncrease} hitSlop={8}>
+              <Text style={styles.stepBtnText}>+</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={8}>
+            <Text style={styles.addBtnText}>ADD</Text>
+          </Pressable>
+        )
       ) : null}
     </Pressable>
   );
@@ -95,5 +110,31 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     fontWeight: '800',
     fontSize: 12,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cream,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stepBtn: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  stepValue: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: colors.ink,
+    minWidth: 16,
+    textAlign: 'center',
   },
 });

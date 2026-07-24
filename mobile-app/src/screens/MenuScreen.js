@@ -11,8 +11,9 @@ import { useProducts } from '../context/ProductsContext';
 export default function MenuScreen({ route, navigation }) {
   const initialCategoryId = route.params?.categoryId ?? null;
   const [activeCategory, setActiveCategory] = useState(initialCategoryId);
-  const { addToCart } = useCart();
+  const { items: cartItems, addToCart, updateQuantity } = useCart();
   const { products, loading } = useProducts();
+  const qtyFor = (itemId) => cartItems.find((e) => e.item.id === itemId)?.quantity || 0;
 
   const categories = useMemo(() => {
     const names = [...new Set(products.map((p) => p.category).filter(Boolean))];
@@ -65,6 +66,9 @@ export default function MenuScreen({ route, navigation }) {
             item={item}
             onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
             onAdd={() => addToCart(item, 1)}
+            quantity={qtyFor(item.id)}
+            onIncrease={() => addToCart(item, 1)}
+            onDecrease={() => updateQuantity(item.id, qtyFor(item.id) - 1)}
           />
         )}
       />

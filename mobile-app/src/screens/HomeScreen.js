@@ -26,7 +26,7 @@ export default function HomeScreen({ navigation }) {
   const [query, setQuery] = useState('');
   const [adminPhone, setAdminPhone] = useState(null);
   const insets = useSafeAreaInsets();
-  const { addToCart } = useCart();
+  const { items: cartItems, addToCart, updateQuantity } = useCart();
   const { user } = useAuth();
   const { products, loading, error, refresh } = useProducts();
 
@@ -56,6 +56,8 @@ export default function HomeScreen({ navigation }) {
       (i) => i.name.toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q)
     );
   }, [query, products]);
+
+  const qtyFor = (itemId) => cartItems.find((e) => e.item.id === itemId)?.quantity || 0;
 
   if (loading) {
     return (
@@ -109,6 +111,9 @@ export default function HomeScreen({ navigation }) {
                 item={item}
                 onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
                 onAdd={() => addToCart(item, 1)}
+                quantity={qtyFor(item.id)}
+                onIncrease={() => addToCart(item, 1)}
+                onDecrease={() => updateQuantity(item.id, qtyFor(item.id) - 1)}
               />
             ))}
           </View>
@@ -152,6 +157,9 @@ export default function HomeScreen({ navigation }) {
                   item={item}
                   onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
                   onAdd={() => addToCart(item, 1)}
+                  quantity={qtyFor(item.id)}
+                  onIncrease={() => addToCart(item, 1)}
+                  onDecrease={() => updateQuantity(item.id, qtyFor(item.id) - 1)}
                 />
               ))}
             </View>
