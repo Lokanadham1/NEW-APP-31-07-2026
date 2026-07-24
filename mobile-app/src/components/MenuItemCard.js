@@ -1,12 +1,45 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import { iconForCategory } from '../theme/categoryIcons';
+
+// The quantity in the middle of the stepper doubles as a text input, so a
+// customer ordering in bulk can type "50" directly instead of tapping +49 times.
+function QtyInput({ quantity, onSetQuantity }) {
+  const [text, setText] = useState(String(quantity));
+
+  // Stay in sync when quantity changes from outside (the +/- buttons, or
+  // another screen updating the same cart entry) — but not while the field
+  // is empty mid-edit, so a backspace-to-retype doesn't get overwritten.
+  useEffect(() => { setText(String(quantity)); }, [quantity]);
+
+  const commit = () => {
+    const n = parseInt(text, 10);
+    if (!text || Number.isNaN(n) || n <= 0) {
+      setText(String(quantity));
+    } else if (n !== quantity) {
+      onSetQuantity(n);
+    }
+  };
+
+  return (
+    <TextInput
+      style={styles.stepInput}
+      value={text}
+      onChangeText={(t) => setText(t.replace(/[^0-9]/g, ''))}
+      onBlur={commit}
+      onSubmitEditing={commit}
+      keyboardType="number-pad"
+      selectTextOnFocus
+      maxLength={4}
+    />
+  );
+}
 
 // quantity: how many of this item are already in the cart (0 = not added).
 // When quantity > 0 the ADD button becomes a stepper, matching the cart
 // screen's -/qty/+ control instead of a silent no-feedback tap.
-export default function MenuItemCard({ item, onPress, onAdd, quantity = 0, onIncrease, onDecrease }) {
+export default function MenuItemCard({ item, onPress, onAdd, quantity = 0, onIncrease, onDecrease, onSetQuantity }) {
   const available = item.status !== 'out_of_stock';
 
   return (
@@ -30,7 +63,7 @@ export default function MenuItemCard({ item, onPress, onAdd, quantity = 0, onInc
             <Pressable style={styles.stepBtn} onPress={onDecrease} hitSlop={8}>
               <Text style={styles.stepBtnText}>–</Text>
             </Pressable>
-            <Text style={styles.stepValue}>{quantity}</Text>
+            <QtyInput quantity={quantity} onSetQuantity={onSetQuantity} />
             <Pressable style={styles.stepBtn} onPress={onIncrease} hitSlop={8}>
               <Text style={styles.stepBtnText}>+</Text>
             </Pressable>
@@ -136,5 +169,14 @@ const styles = StyleSheet.create({
     color: colors.ink,
     minWidth: 16,
     textAlign: 'center',
+  },
+  stepInput: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: colors.ink,
+    minWidth: 26,
+    textAlign: 'center',
+    paddingVertical: 0,
+    paddingHorizontal: 2,
   },
 });

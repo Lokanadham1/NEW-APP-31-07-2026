@@ -69,6 +69,7 @@ export default function MenuScreen({ route, navigation }) {
             quantity={qtyFor(item.id)}
             onIncrease={() => addToCart(item, 1)}
             onDecrease={() => updateQuantity(item.id, qtyFor(item.id) - 1)}
+            onSetQuantity={(qty) => updateQuantity(item.id, qty)}
           />
         )}
       />

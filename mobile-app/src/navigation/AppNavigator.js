@@ -129,7 +129,22 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="HomeTab" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="OrdersTab" component={OrdersStack} options={{ tabBarLabel: 'Orders' }} />
+      <Tab.Screen
+        name="OrdersTab"
+        component={OrdersStack}
+        options={{ tabBarLabel: 'Orders' }}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            // By default, switching TO this tab from elsewhere resumes
+            // whatever was last on top of its stack — e.g. a specific
+            // OrderDetail pushed via "Track my order". That leaves the tab
+            // opening a random past order instead of the orders list, which
+            // is confusing since nothing on the tab bar shows you're deep in
+            // a stack. Always reset to the list on tab press.
+            navigation.navigate('OrdersTab', { screen: 'OrdersList' });
+          },
+        })}
+      />
       <Tab.Screen name="Cart" component={CartScreen} />
       <Tab.Screen name="AlertsTab" component={NotificationsScreen} options={{ tabBarLabel: 'Alerts' }} />
       <Tab.Screen name="ProfileTab" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
