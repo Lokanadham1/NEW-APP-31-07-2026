@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { colors } from '../theme/colors';
 import { navigationRef } from './navigationRef';
+import { useCart } from '../context/CartContext';
 
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -55,11 +56,21 @@ const TAB_ICONS = {
 };
 
 function TabIcon({ label, focused }) {
+  // Cart has no other confirmation when you add an item from Home/Menu, so a
+  // live badge here is the only feedback a tap actually did something.
+  const { itemCount } = useCart();
+  const showBadge = label === 'Cart' && itemCount > 0;
+
   return (
     <View style={styles.tabIconWrap}>
       <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
         {TAB_ICONS[label]}
       </Text>
+      {showBadge ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{itemCount > 9 ? '9+' : itemCount}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -208,5 +219,22 @@ const styles = StyleSheet.create({
   },
   tabIconFocused: {
     opacity: 1,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
   },
 });
