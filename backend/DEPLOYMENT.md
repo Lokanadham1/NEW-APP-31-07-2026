@@ -1,8 +1,8 @@
 # Backend Deployment Guide — Roti & More
 
-This covers deploying just the backend API. Mobile app build/release steps live in
-`mobile-app/README.md`; admin dashboard deployment will get its own section once
-`admin-web/` is built (Phase 5 of the project roadmap).
+This covers deploying just the backend API. Mobile app build/release steps (which
+cover both the customer and admin experience — one app, role-based tabs) live in
+`mobile-app/README.md`.
 
 ---
 

@@ -27,7 +27,7 @@ build. See "Admin screens" below.
 - **Cart** — edit quantities, running subtotal.
 - **Checkout** — pick a delivery date/time slot, optional notes, places the
   order via `POST /orders` (no online payment — Roti & More collects payment
-  separately and records it in the admin dashboard).
+  separately and records it in the admin tabs, see below).
 - **Orders** — live status (pending/approved/completed/rejected/cancelled),
   tap into an order to cancel (within 6h while pending), reschedule (once),
   or edit the delivery address (once) — all backed by the real API.
@@ -51,10 +51,6 @@ backend's `ADMIN_MOBILES`:
 - **Alerts** — send a message to one customer or broadcast to all of them
   (`POST /notifications/send`), plus the automatic activity log (new orders,
   cancellations, reschedules, address changes).
-
-This mirrors `admin-web/` (a browser-based version of the same dashboard,
-useful for managing things from a laptop) — both talk to the identical
-backend API, so admins can use whichever is convenient.
 
 ## 1. Run it locally
 
@@ -116,14 +112,13 @@ an EAS development build — raw device push tokens obtained inside Expo Go
 belong to Expo's own Firebase project, not yours, so your backend can't
 send to them). Once that's done:
 
-- New orders push to every admin's registered devices.
+- New orders push to every admin's registered devices (the same app, on
+  whichever phone is logged in with an admin number).
 - Order accept/reject/deliver and payments push to that customer's devices.
 - Customer cancel/reschedule/address-edit pushes to admin devices.
-- Tapping a notification opens the Notifications screen
+- Tapping a notification opens the right Notifications screen for whichever
+  tab bar (customer or admin) is currently active
   (`src/navigation/navigationRef.js` + the listener in `App.js`).
-
-The admin side of this (registering the admin dashboard for web push) lands
-when `admin-web/` is built.
 
 ## 4. Customize before publishing
 
@@ -131,8 +126,8 @@ when `admin-web/` is built.
   `expo.android.package` (must be unique, reverse-domain style). You cannot
   change the package ID after your first Play Store upload, so pick it
   carefully.
-- **Menu & prices**: managed from the backend/admin dashboard, not in the
-  app — add products via `POST /products` (or the admin dashboard once built).
+- **Menu & prices**: managed from the app itself — log in with an admin
+  number and use the Products tab (add/edit/delete, with a photo).
 - **Colors**: `src/theme/colors.js` (already set from your logo).
 - **Icon/splash image**: replace the files in `assets/` (same filenames) if
   you want a different icon than the crest logo.

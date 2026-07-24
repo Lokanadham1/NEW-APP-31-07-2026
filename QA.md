@@ -31,22 +31,15 @@ windows; admin customer search.
 tested, actual SMS delivery is not. Load/concurrency testing not done (this is a
 small-business app, not expected to need it, but worth knowing).
 
-## Admin web dashboard (`admin-web/`)
-
-**Browser-tested** (Playwright, against a live local backend) — not just bundled:
-login (OTP, admin-only — a non-admin login is correctly refused), dashboard stats,
-order accept/reject with live status transitions, payment recording with live
-balance updates, action buttons correctly appearing/disappearing by order status,
-reschedule availability rules, product create with an uploaded photo rendering
-correctly, customer search/detail, "message this customer" deep link, notification
-broadcast (confirmed recipient count). Re-run once more after the security
-hardening pass (helmet, rate limiting, stricter error handler) — no regressions.
-
-**Not covered**: cross-browser testing (only tested in the sandbox's Chromium);
-mobile/responsive layout for the dashboard itself (it's meant for
-desktop/laptop use, per its own design).
-
 ## Mobile app (`mobile-app/`)
+
+The project was originally going to ship a separate browser-based admin dashboard
+(`admin-web/`) alongside the app. That was removed by request — the app's own admin
+tabs cover the same ground, so there's now a single Android app for both customer
+and admin use. Before removal, the dashboard's screens (orders, products, customers,
+notifications) were browser-tested end-to-end (Playwright, live backend) and every
+one of those flows was carried over into the app's admin tabs against the identical
+API — see the note on each business rule below.
 
 **Verified**: the app bundles cleanly via `expo export` after every change (currently
 899 modules, zero syntax/import errors). Every screen's API calls were checked by
@@ -54,8 +47,8 @@ hand against the backend's actual routes and response shapes. Every
 `navigation.navigate()` call in the new admin screens was checked against the
 registered route names in `AppNavigator.js`. Business-rule logic (cancel window,
 reschedule-once, address-edit-once, out-of-stock handling) mirrors the
-already-tested backend and admin-web behavior exactly, since all three talk to the
-same API contract.
+already browser-tested behavior exactly, since both talk to the identical
+backend API contract.
 
 **Not covered — real limitation, not an oversight**: this sandbox has no Android
 emulator or physical device, so **no screen has actually been tapped through on a
