@@ -75,21 +75,36 @@ issues the same JWT (same allowlist logic as `/auth/verify-otp`). Set
 | DELETE | `/products/:id` | | admin |
 
 ### Orders (auth)
-| GET | `/orders?status=` | | user: own · admin: all (filter) |
+| GET | `/orders?status=` | | user: own · admin: all (pending-first when unfiltered) |
 | GET | `/orders/:id` | | owner or admin |
 | POST | `/orders` | `{items:[{productId,quantity}], deliveryDate, deliveryTime, remarks}` | totals recomputed server-side |
-| POST | `/orders/:id/accept` | | admin |
-| POST | `/orders/:id/reject` | | admin |
-| POST | `/orders/:id/deliver` | | admin |
+| POST | `/orders/:id/accept` | | admin; `pending` → `approved` |
+| POST | `/orders/:id/reject` | | admin; → `rejected` |
+| POST | `/orders/:id/prepare` | | admin; `approved` → `preparing` |
+| POST | `/orders/:id/ready` | | admin; `preparing` → `ready` |
+| POST | `/orders/:id/out-for-delivery` | | admin; `ready` → `out_for_delivery` |
+| POST | `/orders/:id/deliver` | | admin; → `completed` (works from any status, manual override) |
 | POST | `/orders/:id/cancel` | | user, pending & within 6h |
 | POST | `/orders/:id/reschedule` | `{deliveryDate, deliveryTime}` | user once · admin any time |
 | PUT | `/orders/:id/address` | `{address}` | user, once |
 | POST | `/orders/:id/payments` | `{amount, note, mode, transactionId}` | admin; auto-completes when balance clears |
 | GET | `/orders/:id/bill` | | bill payload for print |
 
+Order status pipeline: `pending → approved → preparing → ready → out_for_delivery → completed`,
+with `rejected`/`cancelled` as terminal branches off `pending`. Each kitchen step
+(`prepare`/`ready`/`out-for-delivery`) only succeeds from its direct predecessor — the UI
+can't skip a stage — while `deliver` stays a permissive manual override from any status,
+matching how it always worked.
+
 ### Customers (admin)
 | GET | `/customers?q=` | search by id/mobile/name |
 | GET | `/customers/:mobile` | profile + orders + totals |
+
+### Admin dashboard (auth, admin)
+| GET | `/admin/dashboard` | | today's order counts by stage + per-product ordered/completed/remaining quantities, scoped to orders placed today |
+
+### Public config
+| GET | `/config` | | `{adminPhone}` for the app's "Call Admin" button — unauthenticated, non-sensitive |
 
 ### Notifications (auth)
 | GET | `/notifications` | user: own · admin: broadcast (`user_id=0`) |
@@ -115,9 +130,7 @@ response.
 - Delivery address edit: once per order.
 - Payment cannot exceed the remaining balance; order auto-moves to `completed`
   when fully paid.
-
-## Wiring the frontend
-The app currently uses `localStorage`. Replace those reads/writes with `fetch`
-calls to these endpoints, store the JWT from `verify-otp`, and send it as
-`Authorization: Bearer <token>` on every authed request. Route on the `role`
-field returned by `verify-otp`.
+- Kitchen pipeline steps (`prepare`/`ready`/`out-for-delivery`) only succeed from
+  their direct predecessor status.
+- Product create always notifies every customer; product update notifies them only
+  when price or availability actually changed (not on every edit).

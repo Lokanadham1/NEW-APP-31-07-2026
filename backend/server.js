@@ -181,6 +181,17 @@ app.get('/products', h(async (req, res) => {
   res.json(rows.map(mapProduct));
 }));
 
+// Broadcasts a message to every customer — in-app alert + push, same as
+// notify(), just addressed to all customers instead of one user/admin.
+// Returns how many customers it went to.
+async function notifyAllCustomers(message) {
+  const { rows: customers } = await query("SELECT id FROM users WHERE role='user'");
+  for (const c of customers) {
+    await notify(c.id, message);
+  }
+  return customers.length;
+}
+
 app.post('/products', authRequired, adminRequired, h(async (req, res) => {
   const { name, price, description, category, status, imageUrl } = req.body;
   if (!name || price == null) return res.status(400).json({ error: 'Name and price required.' });
@@ -190,6 +201,7 @@ app.post('/products', authRequired, adminRequired, h(async (req, res) => {
     [name, Number(price), description || '', category || 'Flatbreads',
      status || 'available', imageUrl || null]
   );
+  await notifyAllCustomers(`🆕 New on the menu: ${name} — ₹${Number(price)}`);
   res.status(201).json(mapProduct(rows[0]));
 }));
 
@@ -197,13 +209,27 @@ app.put('/products/:id', authRequired, adminRequired, h(async (req, res) => {
   const p = await getProduct(req.params.id);
   if (!p) return res.status(404).json({ error: 'Not found' });
   const { name, price, description, category, status, imageUrl } = req.body;
+  const newPrice = price != null ? Number(price) : p.price;
+  const newStatus = status ?? p.status;
   const { rows } = await query(
     `UPDATE products SET name=$1, price=$2, description=$3, category=$4, status=$5, image_url=$6
      WHERE id=$7 RETURNING *`,
-    [name ?? p.name, price != null ? Number(price) : p.price,
-     description ?? p.description, category ?? p.category,
-     status ?? p.status, imageUrl !== undefined ? imageUrl : p.image_url, p.id]
+    [name ?? p.name, newPrice, description ?? p.description, category ?? p.category,
+     newStatus, imageUrl !== undefined ? imageUrl : p.image_url, p.id]
   );
+
+  // Only tell customers about changes that actually affect them — price and
+  // availability — not every edit (e.g. a description tweak).
+  const label = name ?? p.name;
+  if (newPrice !== p.price) {
+    await notifyAllCustomers(`💰 Price update: ${label} is now ₹${newPrice}`);
+  }
+  if (newStatus !== p.status) {
+    await notifyAllCustomers(
+      newStatus === 'available' ? `✅ ${label} is back in stock!` : `⚠️ ${label} is currently out of stock.`
+    );
+  }
+
   res.json(mapProduct(rows[0]));
 }));
 
@@ -218,6 +244,19 @@ app.delete('/products/:id', authRequired, adminRequired, h(async (req, res) => {
 const canCancel = (o) =>
   o.status === 'pending' && (Date.now() - new Date(o.created_at).getTime()) < 6 * 3600 * 1000;
 
+// Admin's default ("all") order list: pending work surfaces first regardless
+// of age, so nothing gets missed — newest first within each stage after that.
+const STATUS_PRIORITY_SQL = `CASE status
+  WHEN 'pending' THEN 0
+  WHEN 'approved' THEN 1
+  WHEN 'preparing' THEN 2
+  WHEN 'ready' THEN 3
+  WHEN 'out_for_delivery' THEN 4
+  WHEN 'completed' THEN 5
+  WHEN 'rejected' THEN 6
+  WHEN 'cancelled' THEN 7
+  ELSE 8 END`;
+
 // list — users see their own, admin sees all (optional ?status= filter)
 app.get('/orders', authRequired, h(async (req, res) => {
   const { status } = req.query;
@@ -225,7 +264,7 @@ app.get('/orders', authRequired, h(async (req, res) => {
   if (req.user.role === 'admin') {
     ({ rows } = status && status !== 'all'
       ? await query('SELECT * FROM orders WHERE status=$1 ORDER BY id DESC', [status])
-      : await query('SELECT * FROM orders ORDER BY id DESC'));
+      : await query(`SELECT * FROM orders ORDER BY ${STATUS_PRIORITY_SQL}, id DESC`));
   } else {
     ({ rows } = await query('SELECT * FROM orders WHERE user_id=$1 ORDER BY id DESC', [req.user.id]));
   }
@@ -307,12 +346,35 @@ app.post('/orders/:id/reject', authRequired, adminRequired, h(async (req, res) =
   res.json(mapOrder(await getOrder(o.id)));
 }));
 
-// mark delivered (admin)
+// Kitchen pipeline (admin): approved -> preparing -> ready -> out_for_delivery -> completed.
+// Each step only allowed from its natural predecessor so the UI can't skip a
+// stage by accident; `deliver` below stays permissive (works from any
+// non-terminal status) as an escape hatch, matching its existing behavior.
+const PIPELINE_STEPS = {
+  prepare: { from: 'approved', to: 'preparing', label: 'preparing' },
+  ready: { from: 'preparing', to: 'ready', label: 'ready for delivery' },
+  'out-for-delivery': { from: 'ready', to: 'out_for_delivery', label: 'out for delivery' },
+};
+for (const [path, step] of Object.entries(PIPELINE_STEPS)) {
+  app.post(`/orders/:id/${path}`, authRequired, adminRequired, h(async (req, res) => {
+    const o = await getOrder(req.params.id);
+    if (!o) return res.status(404).json({ error: 'Not found' });
+    if (o.status !== step.from) {
+      return res.status(400).json({ error: `Order must be "${step.from}" to mark it ${step.label}.` });
+    }
+    await query('UPDATE orders SET status=$1 WHERE id=$2', [step.to, o.id]);
+    await notify(o.user_id, `👨‍🍳 Order #${o.id} is now ${step.label}.`);
+    res.json(mapOrder(await getOrder(o.id)));
+  }));
+}
+
+// mark delivered (admin) — permissive on purpose: always available as a
+// manual override regardless of which pipeline step the order is on.
 app.post('/orders/:id/deliver', authRequired, adminRequired, h(async (req, res) => {
   const o = await getOrder(req.params.id);
   if (!o) return res.status(404).json({ error: 'Not found' });
   await query("UPDATE orders SET status='completed' WHERE id=$1", [o.id]);
-  await notify(o.user_id, `📦 Order #${o.id} marked delivered.`);
+  await notify(o.user_id, `📦 Order #${o.id} delivered.`);
   res.json(mapOrder(await getOrder(o.id)));
 }));
 
@@ -402,6 +464,44 @@ app.get('/orders/:id/bill', authRequired, h(async (req, res) => {
 }));
 
 // ══════════════════════════════════════════════════════════════════════════
+// ADMIN DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════
+// "In progress" = accepted but not yet delivered/rejected/cancelled.
+const IN_PROGRESS_STATUSES = ['approved', 'preparing', 'ready', 'out_for_delivery'];
+
+// Today's production summary: order counts by stage, plus per-product
+// ordered/completed/remaining quantities — scoped to orders *placed* today
+// (not orders delivered today), matching a same-day/pre-order catering
+// workflow where "today's production" means today's incoming orders.
+app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
+  const { rows } = await query('SELECT * FROM orders WHERE created_date=$1', [today()]);
+  const orders = rows.map(mapOrder);
+
+  const productStats = new Map(); // productId -> { productId, name, orderedQty, completedQty }
+  for (const o of orders) {
+    if (o.status === 'rejected' || o.status === 'cancelled') continue; // never produced
+    for (const item of o.items) {
+      const entry = productStats.get(item.productId) ||
+        { productId: item.productId, name: item.name, orderedQty: 0, completedQty: 0 };
+      entry.orderedQty += item.quantity;
+      if (o.status === 'completed') entry.completedQty += item.quantity;
+      productStats.set(item.productId, entry);
+    }
+  }
+  const products = [...productStats.values()]
+    .map((p) => ({ ...p, remainingQty: p.orderedQty - p.completedQty }))
+    .sort((a, b) => b.orderedQty - a.orderedQty);
+
+  res.json({
+    totalToday: orders.length,
+    pendingToday: orders.filter((o) => o.status === 'pending').length,
+    acceptedToday: orders.filter((o) => IN_PROGRESS_STATUSES.includes(o.status)).length,
+    completedToday: orders.filter((o) => o.status === 'completed').length,
+    products,
+  });
+}));
+
+// ══════════════════════════════════════════════════════════════════════════
 // CUSTOMERS (admin)
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/customers', authRequired, adminRequired, h(async (req, res) => {
@@ -475,12 +575,19 @@ app.post('/notifications/send', authRequired, adminRequired, h(async (req, res) 
     await notify(userId, message.trim());
     return res.json({ ok: true, sentTo: 1 });
   }
-  const { rows: customers } = await query("SELECT id FROM users WHERE role='user'");
-  for (const c of customers) {
-    await notify(c.id, message.trim());
-  }
-  res.json({ ok: true, sentTo: customers.length });
+  const sentTo = await notifyAllCustomers(message.trim());
+  res.json({ ok: true, sentTo });
 }));
+
+// ─── Public config ────────────────────────────────────────────────────────────
+// Just the admin contact number for the app's "Call Admin" button — nothing
+// sensitive, safe to leave unauthenticated. Set ADMIN_CONTACT_PHONE (E.164,
+// e.g. +919876543210) in .env; falls back to the first ADMIN_MOBILES entry.
+app.get('/config', (req, res) => {
+  const fallback = (process.env.ADMIN_MOBILES || '').split(',')[0]?.trim();
+  const adminPhone = process.env.ADMIN_CONTACT_PHONE || (fallback ? `+91${fallback}` : null);
+  res.json({ adminPhone });
+});
 
 // ─── Health + boot ───────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ ok: true, time: nowIso() }));

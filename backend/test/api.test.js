@@ -237,3 +237,95 @@ test('push token register/unregister', async () => {
   });
   assert.equal(unreg.status, 200);
 });
+
+test('public config exposes the admin contact number, no auth needed', async () => {
+  const res = await call(base, '/config');
+  assert.equal(res.status, 200);
+  assert.equal(res.body.adminPhone, '+919199999999');
+});
+
+test('order status pipeline: sequential steps enforced, deliver stays a manual override', async () => {
+  const placed = await call(base, '/orders', {
+    method: 'POST', token: customer1.token,
+    body: { items: [{ productId, quantity: 1 }], deliveryDate: '2026-09-01', deliveryTime: '10:00' },
+  });
+  const pid = placed.body.id;
+
+  // Can't jump straight into the kitchen pipeline from pending.
+  const tooEarly = await call(base, `/orders/${pid}/prepare`, { method: 'POST', token: admin.token });
+  assert.equal(tooEarly.status, 400);
+
+  await call(base, `/orders/${pid}/accept`, { method: 'POST', token: admin.token });
+
+  const prepare = await call(base, `/orders/${pid}/prepare`, { method: 'POST', token: admin.token });
+  assert.equal(prepare.status, 200);
+  assert.equal(prepare.body.status, 'preparing');
+
+  // Can't skip "ready" and jump straight to out-for-delivery.
+  const skip = await call(base, `/orders/${pid}/out-for-delivery`, { method: 'POST', token: admin.token });
+  assert.equal(skip.status, 400);
+
+  const ready = await call(base, `/orders/${pid}/ready`, { method: 'POST', token: admin.token });
+  assert.equal(ready.status, 200);
+  assert.equal(ready.body.status, 'ready');
+
+  const outForDelivery = await call(base, `/orders/${pid}/out-for-delivery`, { method: 'POST', token: admin.token });
+  assert.equal(outForDelivery.status, 200);
+  assert.equal(outForDelivery.body.status, 'out_for_delivery');
+
+  const delivered = await call(base, `/orders/${pid}/deliver`, { method: 'POST', token: admin.token });
+  assert.equal(delivered.status, 200);
+  assert.equal(delivered.body.status, 'completed');
+});
+
+test('admin order list sorts pending before completed, regardless of id', async () => {
+  const fresh = await call(base, '/orders', {
+    method: 'POST', token: customer1.token,
+    body: { items: [{ productId, quantity: 1 }], deliveryDate: '2026-09-10', deliveryTime: '10:00' },
+  });
+  const list = await call(base, '/orders', { token: admin.token });
+  const idxPending = list.body.findIndex((o) => o.id === fresh.body.id);
+  const idxCompleted = list.body.findIndex((o) => o.status === 'completed');
+  assert.ok(idxPending !== -1 && idxCompleted !== -1);
+  assert.ok(idxPending < idxCompleted, 'a pending order must sort before a completed one');
+});
+
+test('admin dashboard: today\'s counts and per-product breakdown', async () => {
+  const nonAdmin = await call(base, '/admin/dashboard', { token: customer1.token });
+  assert.equal(nonAdmin.status, 403);
+
+  const res = await call(base, '/admin/dashboard', { token: admin.token });
+  assert.equal(res.status, 200);
+  assert.ok(res.body.totalToday >= 1);
+  assert.ok(Array.isArray(res.body.products));
+  const entry = res.body.products.find((p) => p.productId === productId);
+  assert.ok(entry, 'the product used throughout these tests should appear in today\'s breakdown');
+  assert.equal(entry.remainingQty, entry.orderedQty - entry.completedQty);
+});
+
+test('product create/update notifies customers only when it actually matters', async () => {
+  const before = await call(base, '/notifications', { token: customer1.token });
+  const beforeCount = before.body.length;
+
+  // A brand new product always notifies.
+  const created = await call(base, '/products', {
+    method: 'POST', token: admin.token, body: { name: 'Gulab Jamun', price: 20, category: 'Desserts' },
+  });
+  assert.equal(created.status, 201);
+
+  // A price change notifies.
+  const priceChanged = await call(base, `/products/${created.body.id}`, {
+    method: 'PUT', token: admin.token, body: { price: 25 },
+  });
+  assert.equal(priceChanged.status, 200);
+
+  // A no-op update (same price, same status) should NOT notify again.
+  const noop = await call(base, `/products/${created.body.id}`, {
+    method: 'PUT', token: admin.token, body: { price: 25, description: 'still tasty' },
+  });
+  assert.equal(noop.status, 200);
+
+  const after = await call(base, '/notifications', { token: customer1.token });
+  // Exactly 2 new alerts: the create, and the one real price change.
+  assert.equal(after.body.length, beforeCount + 2);
+});
