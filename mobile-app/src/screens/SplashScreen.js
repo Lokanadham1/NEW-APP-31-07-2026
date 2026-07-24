@@ -10,6 +10,8 @@ export default function SplashScreen({ navigation }) {
     if (bootstrapping) return;
     if (!isAuthenticated) {
       navigation.replace('Login');
+    } else if (user?.role === 'admin') {
+      navigation.replace('AdminTabs');
     } else if (!user?.profileDone) {
       navigation.replace('ProfileSetup');
     } else {

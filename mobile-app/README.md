@@ -5,7 +5,13 @@ crest logo (forest green + gold on cream). Talks to the real backend in
 `../backend` — mobile-OTP login, live product catalog, order placement with
 admin approval, payment tracking, and notifications.
 
-## What's included
+**One app, two experiences.** The mobile number you log in with decides what
+you see: numbers in the backend's `ADMIN_MOBILES` allowlist land on an admin
+tab bar (Dashboard/Orders/Products/Customers/Alerts) instead of the customer
+one (Home/Orders/Cart/Profile) — same login screen, same APK, no separate
+build. See "Admin screens" below.
+
+## What's included (customer)
 
 - **Splash screen** — restores your session and routes you straight to Home,
   profile setup, or Login depending on what's saved.
@@ -27,6 +33,28 @@ admin approval, payment tracking, and notifications.
   or edit the delivery address (once) — all backed by the real API.
 - **Notifications** — order updates from Roti & More, mark read / mark all read.
 - **Profile** — real account info, edit profile, logout.
+
+## What's included (admin)
+
+Shown instead of the customer tabs when the logged-in mobile number is in the
+backend's `ADMIN_MOBILES`:
+
+- **Dashboard** — pending/approved order counts, customer count, outstanding
+  balance, recent orders.
+- **Orders** — filter by status, accept/reject/mark delivered, reschedule,
+  record a payment, all against the live order.
+- **Products** — add/edit/delete menu items, photo picked from the phone's
+  gallery via `expo-image-picker` (stored as a data URL through the existing
+  `imageUrl` field — no third-party image host needed to start).
+- **Customers** — search, purchase/payment totals, order history, "Message
+  this customer" jumps straight to Alerts with them pre-selected.
+- **Alerts** — send a message to one customer or broadcast to all of them
+  (`POST /notifications/send`), plus the automatic activity log (new orders,
+  cancellations, reschedules, address changes).
+
+This mirrors `admin-web/` (a browser-based version of the same dashboard,
+useful for managing things from a laptop) — both talk to the identical
+backend API, so admins can use whichever is convenient.
 
 ## 1. Run it locally
 
@@ -170,6 +198,7 @@ mobile-app/
     ├── navigation/
     │   ├── AppNavigator.js
     │   └── navigationRef.js      # navigate from outside components (notification taps)
-    ├── components/                # reusable UI (buttons, cards, header)
-    └── screens/                   # one file per screen
+    ├── components/                # reusable UI (buttons, cards, header, status pill)
+    └── screens/                   # one file per customer screen
+        └── admin/                 # admin dashboard/orders/products/customers/alerts screens
 ```

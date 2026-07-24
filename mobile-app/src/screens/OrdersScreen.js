@@ -3,32 +3,8 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pr
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
+import StatusPill from '../components/StatusPill';
 import { api } from '../api/client';
-
-const STATUS_LABEL = {
-  pending: 'Pending approval',
-  approved: 'Approved',
-  completed: 'Completed',
-  rejected: 'Rejected',
-  cancelled: 'Cancelled',
-};
-const STATUS_COLOR = {
-  pending: colors.goldDark,
-  approved: colors.primary,
-  completed: colors.primaryDark,
-  rejected: colors.danger,
-  cancelled: colors.slate,
-};
-
-function StatusPill({ status }) {
-  return (
-    <View style={[styles.pill, { backgroundColor: `${STATUS_COLOR[status] || colors.slate}22` }]}>
-      <Text style={[styles.pillText, { color: STATUS_COLOR[status] || colors.slate }]}>
-        {STATUS_LABEL[status] || status}
-      </Text>
-    </View>
-  );
-}
 
 export default function OrdersScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
@@ -129,15 +105,6 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     fontWeight: '800',
     color: colors.ink,
-  },
-  pill: {
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  pillText: {
-    fontSize: 11.5,
-    fontWeight: '700',
   },
   itemsLine: {
     fontSize: 13,

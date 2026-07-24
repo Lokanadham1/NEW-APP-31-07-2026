@@ -14,7 +14,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
-  const { requestOtp, verifyOtp, logout } = useAuth();
+  const { requestOtp, verifyOtp } = useAuth();
   const [step, setStep] = useState('phone'); // 'phone' | 'code'
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -47,11 +47,10 @@ export default function LoginScreen({ navigation }) {
     try {
       const user = await verifyOtp(phone, code);
       if (user.role === 'admin') {
-        await logout();
-        setError('Admin accounts sign in from the Roti & More admin dashboard, not this app.');
-        return;
+        navigation.replace('AdminTabs');
+      } else {
+        navigation.replace(user.profileDone ? 'MainTabs' : 'ProfileSetup');
       }
-      navigation.replace(user.profileDone ? 'MainTabs' : 'ProfileSetup');
     } catch (e) {
       setError(e.message);
     } finally {

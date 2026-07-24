@@ -21,17 +21,37 @@ import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
+import AdminOrderDetailScreen from '../screens/admin/AdminOrderDetailScreen';
+import AdminProductsScreen from '../screens/admin/AdminProductsScreen';
+import AdminProductFormScreen from '../screens/admin/AdminProductFormScreen';
+import AdminCustomersScreen from '../screens/admin/AdminCustomersScreen';
+import AdminCustomerDetailScreen from '../screens/admin/AdminCustomerDetailScreen';
+import AdminNotificationsScreen from '../screens/admin/AdminNotificationsScreen';
+
 const RootStack = createNativeStackNavigator();
 const HomeStackNav = createNativeStackNavigator();
 const OrdersStackNav = createNativeStackNavigator();
 const ProfileStackNav = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const AdminOrdersStackNav = createNativeStackNavigator();
+const AdminProductsStackNav = createNativeStackNavigator();
+const AdminCustomersStackNav = createNativeStackNavigator();
+const AdminNotificationsStackNav = createNativeStackNavigator();
+const AdminTab = createBottomTabNavigator();
+
 const TAB_ICONS = {
   Home: '🏠',
   Orders: '📦',
   Cart: '🛒',
   Profile: '👤',
+  AdminDashboardTab: '📊',
+  AdminOrdersTab: '📦',
+  AdminProductsTab: '🍽️',
+  AdminCustomersTab: '👥',
+  AdminNotificationsTab: '🔔',
 };
 
 function TabIcon({ label, focused }) {
@@ -95,6 +115,63 @@ function MainTabs() {
   );
 }
 
+// ─── Admin ──────────────────────────────────────────────────────────────────
+function AdminOrdersStack() {
+  return (
+    <AdminOrdersStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <AdminOrdersStackNav.Screen name="AdminOrders" component={AdminOrdersScreen} />
+      <AdminOrdersStackNav.Screen name="AdminOrderDetail" component={AdminOrderDetailScreen} />
+    </AdminOrdersStackNav.Navigator>
+  );
+}
+
+function AdminProductsStack() {
+  return (
+    <AdminProductsStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <AdminProductsStackNav.Screen name="AdminProducts" component={AdminProductsScreen} />
+      <AdminProductsStackNav.Screen name="AdminProductForm" component={AdminProductFormScreen} />
+    </AdminProductsStackNav.Navigator>
+  );
+}
+
+function AdminCustomersStack() {
+  return (
+    <AdminCustomersStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <AdminCustomersStackNav.Screen name="AdminCustomers" component={AdminCustomersScreen} />
+      <AdminCustomersStackNav.Screen name="AdminCustomerDetail" component={AdminCustomerDetailScreen} />
+    </AdminCustomersStackNav.Navigator>
+  );
+}
+
+function AdminNotificationsStack() {
+  return (
+    <AdminNotificationsStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <AdminNotificationsStackNav.Screen name="AdminNotifications" component={AdminNotificationsScreen} />
+    </AdminNotificationsStackNav.Navigator>
+  );
+}
+
+function AdminTabs() {
+  return (
+    <AdminTab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.slate,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
+      })}
+    >
+      <AdminTab.Screen name="AdminDashboardTab" component={AdminDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
+      <AdminTab.Screen name="AdminOrdersTab" component={AdminOrdersStack} options={{ tabBarLabel: 'Orders' }} />
+      <AdminTab.Screen name="AdminProductsTab" component={AdminProductsStack} options={{ tabBarLabel: 'Products' }} />
+      <AdminTab.Screen name="AdminCustomersTab" component={AdminCustomersStack} options={{ tabBarLabel: 'Customers' }} />
+      <AdminTab.Screen name="AdminNotificationsTab" component={AdminNotificationsStack} options={{ tabBarLabel: 'Alerts' }} />
+    </AdminTab.Navigator>
+  );
+}
+
 export default function AppNavigator() {
   return (
     <NavigationContainer ref={navigationRef}>
@@ -103,6 +180,7 @@ export default function AppNavigator() {
         <RootStack.Screen name="Login" component={LoginScreen} />
         <RootStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
         <RootStack.Screen name="MainTabs" component={MainTabs} />
+        <RootStack.Screen name="AdminTabs" component={AdminTabs} />
       </RootStack.Navigator>
     </NavigationContainer>
   );

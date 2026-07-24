@@ -5,7 +5,17 @@ import { createNavigationContainerRef } from '@react-navigation/native';
 
 export const navigationRef = createNavigationContainerRef();
 
+// Routes to whichever notifications screen matches the root tab the user is
+// currently on — a tap can arrive while either a customer or an admin is
+// signed in, and they have separate tab structures.
 export function navigateToNotifications() {
   if (!navigationRef.isReady()) return;
-  navigationRef.navigate('MainTabs', { screen: 'Profile', params: { screen: 'Notifications' } });
+  const state = navigationRef.getRootState();
+  const currentRouteName = state?.routes?.[state.index]?.name;
+
+  if (currentRouteName === 'AdminTabs') {
+    navigationRef.navigate('AdminTabs', { screen: 'AdminNotificationsTab', params: { screen: 'AdminNotifications' } });
+  } else {
+    navigationRef.navigate('MainTabs', { screen: 'Profile', params: { screen: 'Notifications' } });
+  }
 }
