@@ -7,8 +7,14 @@ import StatusPill from '../../components/StatusPill';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 
+// How often to re-poll the dashboard while it's the focused screen. There's
+// no websocket/realtime infra in this app, so polling is the pragmatic
+// stand-in for "auto-update when a new/completed/cancelled order arrives".
+const POLL_INTERVAL_MS = 20000;
+
 export default function AdminDashboardScreen({ navigation }) {
   const { logout } = useAuth();
+  const [summary, setSummary] = useState(null); // { totalToday, pendingToday, acceptedToday, completedToday, products }
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +25,10 @@ export default function AdminDashboardScreen({ navigation }) {
     isRefresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
-      const [o, c] = await Promise.all([api.get('/orders'), api.get('/customers')]);
+      const [dash, o, c] = await Promise.all([
+        api.get('/admin/dashboard'), api.get('/orders'), api.get('/customers'),
+      ]);
+      setSummary(dash);
       setOrders(o);
       setCustomers(c);
     } catch (e) {
@@ -30,7 +39,12 @@ export default function AdminDashboardScreen({ navigation }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(false); }, [load]));
+  // Refresh on focus, then keep polling quietly (no spinner) while focused.
+  useFocusEffect(useCallback(() => {
+    load(false);
+    const timer = setInterval(() => load(true), POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [load]));
 
   if (loading) {
     return (
@@ -41,10 +55,9 @@ export default function AdminDashboardScreen({ navigation }) {
     );
   }
 
-  const pending = orders.filter((o) => o.status === 'pending');
-  const approved = orders.filter((o) => o.status === 'approved');
   const totalPending = customers.reduce((s, c) => s + c.pending, 0);
   const recent = orders.slice(0, 8);
+  const products = summary?.products || [];
 
   const handleLogout = async () => {
     await logout();
@@ -64,12 +77,44 @@ export default function AdminDashboardScreen({ navigation }) {
       >
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
+        <Text style={styles.sectionTitle}>Today's production</Text>
         <View style={styles.statGrid}>
-          <StatCard label="Pending orders" value={pending.length} highlight={pending.length > 0} />
-          <StatCard label="Approved" value={approved.length} />
+          <StatCard label="Total orders today" value={summary?.totalToday ?? 0} />
+          <StatCard label="Pending" value={summary?.pendingToday ?? 0} highlight={(summary?.pendingToday ?? 0) > 0} />
+          <StatCard label="Accepted" value={summary?.acceptedToday ?? 0} />
+          <StatCard label="Completed" value={summary?.completedToday ?? 0} />
+        </View>
+
+        <View style={styles.statGrid}>
           <StatCard label="Customers" value={customers.length} />
           <StatCard label="Outstanding" value={`₹${totalPending}`} highlight={totalPending > 0} />
         </View>
+
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Today's items</Text>
+        </View>
+        {products.length === 0 ? (
+          <Text style={[styles.muted, { marginBottom: spacing.lg }]}>No orders placed today yet.</Text>
+        ) : (
+          <View style={[styles.card, { marginBottom: spacing.lg }]}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Product</Text>
+              <Text style={styles.tableHeaderCell}>Ordered</Text>
+              <Text style={styles.tableHeaderCell}>Done</Text>
+              <Text style={styles.tableHeaderCell}>Left</Text>
+            </View>
+            {products.map((p) => (
+              <View key={p.productId} style={styles.tableRow}>
+                <Text style={[styles.tableCell, { flex: 2, fontWeight: '700' }]} numberOfLines={1}>{p.name}</Text>
+                <Text style={styles.tableCell}>{p.orderedQty}</Text>
+                <Text style={styles.tableCell}>{p.completedQty}</Text>
+                <Text style={[styles.tableCell, p.remainingQty > 0 && { color: colors.goldDark, fontWeight: '800' }]}>
+                  {p.remainingQty}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Recent orders</Text>
@@ -114,7 +159,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.danger, fontSize: 13, fontWeight: '600', marginBottom: spacing.md },
   logoutLink: { color: colors.danger, fontSize: 13, fontWeight: '700' },
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   statCard: {
     width: '47%',
     backgroundColor: colors.surface,
@@ -125,11 +170,19 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 12, color: colors.slate },
   statValue: { fontSize: 22, fontWeight: '800', color: colors.ink, marginTop: 2 },
+  card: {
+    backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md,
+  },
+  tableHeaderRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm, marginBottom: spacing.sm },
+  tableHeaderCell: { flex: 1, fontSize: 11.5, fontWeight: '700', color: colors.slate, textTransform: 'uppercase' },
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  tableCell: { flex: 1, fontSize: 13.5, color: colors.ink },
   sectionHeaderRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.ink },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.ink, marginBottom: spacing.sm },
   seeAll: { fontSize: 13, fontWeight: '700', color: colors.primary },
   muted: { color: colors.slate, fontSize: 13.5 },
   orderRow: {
