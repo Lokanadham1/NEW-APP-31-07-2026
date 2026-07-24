@@ -16,6 +16,6 @@ export function navigateToNotifications() {
   if (currentRouteName === 'AdminTabs') {
     navigationRef.navigate('AdminTabs', { screen: 'AdminNotificationsTab', params: { screen: 'AdminNotifications' } });
   } else {
-    navigationRef.navigate('MainTabs', { screen: 'Profile', params: { screen: 'Notifications' } });
+    navigationRef.navigate('MainTabs', { screen: 'AlertsTab' });
   }
 }

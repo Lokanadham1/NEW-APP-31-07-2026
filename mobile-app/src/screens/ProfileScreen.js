@@ -16,7 +16,6 @@ export default function ProfileScreen({ navigation }) {
 
   const MENU_ROWS = [
     { icon: '✏️', label: 'Edit profile', onPress: () => navigation.navigate('ProfileSetup', { isEdit: true }) },
-    { icon: '🔔', label: 'Notifications', onPress: () => navigation.navigate('Notifications') },
     { icon: '❓', label: 'Help & support', onPress: () => {} },
     { icon: '📄', label: 'Terms & Privacy Policy', onPress: () => {} },
   ];

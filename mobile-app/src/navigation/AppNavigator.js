@@ -43,11 +43,18 @@ const AdminCustomersStackNav = createNativeStackNavigator();
 const AdminNotificationsStackNav = createNativeStackNavigator();
 const AdminTab = createBottomTabNavigator();
 
+// Tab-level route names are deliberately distinct from the first screen name
+// inside the stack each tab wraps (e.g. "HomeTab" wrapping a stack whose
+// first screen is "Home"). Reusing the same name at both levels is what
+// triggers React Navigation's "Found screens with the same name nested
+// inside one another" warning — and produced real bugs here (ambiguous
+// back-navigation) before this was fixed, not just a console warning.
 const TAB_ICONS = {
-  Home: '🏠',
-  Orders: '📦',
+  HomeTab: '🏠',
+  OrdersTab: '📦',
   Cart: '🛒',
-  Profile: '👤',
+  AlertsTab: '🔔',
+  ProfileTab: '👤',
   AdminDashboardTab: '📊',
   AdminOrdersTab: '📦',
   AdminProductsTab: '🍽️',
@@ -55,24 +62,26 @@ const TAB_ICONS = {
   AdminNotificationsTab: '🔔',
 };
 
-function TabIcon({ label, focused }) {
-  // Cart has no other confirmation when you add an item from Home/Menu, so a
-  // live badge here is the only feedback a tap actually did something.
-  const { itemCount } = useCart();
-  const showBadge = label === 'Cart' && itemCount > 0;
-
+function TabIcon({ label, focused, badge }) {
   return (
     <View style={styles.tabIconWrap}>
       <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
         {TAB_ICONS[label]}
       </Text>
-      {showBadge ? (
+      {badge ? (
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{itemCount > 9 ? '9+' : itemCount}</Text>
+          <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
         </View>
       ) : null}
     </View>
   );
+}
+
+function CartTabIcon({ focused }) {
+  // Cart has no other confirmation when you add an item from Home/Menu, so a
+  // live badge here is the only feedback a tap actually did something.
+  const { itemCount } = useCart();
+  return <TabIcon label="Cart" focused={focused} badge={itemCount} />;
 }
 
 function HomeStack() {
@@ -81,7 +90,6 @@ function HomeStack() {
       <HomeStackNav.Screen name="Home" component={HomeScreen} />
       <HomeStackNav.Screen name="Menu" component={MenuScreen} />
       <HomeStackNav.Screen name="ItemDetail" component={ItemDetailScreen} />
-      <HomeStackNav.Screen name="Cart" component={CartScreen} />
       <HomeStackNav.Screen name="Checkout" component={CheckoutScreen} />
       <HomeStackNav.Screen name="OrderSuccess" component={OrderSuccessScreen} />
     </HomeStackNav.Navigator>
@@ -91,7 +99,7 @@ function HomeStack() {
 function OrdersStack() {
   return (
     <OrdersStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <OrdersStackNav.Screen name="Orders" component={OrdersScreen} />
+      <OrdersStackNav.Screen name="OrdersList" component={OrdersScreen} />
       <OrdersStackNav.Screen name="OrderDetail" component={OrderDetailScreen} />
     </OrdersStackNav.Navigator>
   );
@@ -100,8 +108,7 @@ function OrdersStack() {
 function ProfileStack() {
   return (
     <ProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStackNav.Screen name="Profile" component={ProfileScreen} />
-      <ProfileStackNav.Screen name="Notifications" component={NotificationsScreen} />
+      <ProfileStackNav.Screen name="ProfileMain" component={ProfileScreen} />
     </ProfileStackNav.Navigator>
   );
 }
@@ -115,13 +122,17 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.slate,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
-        tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
+        tabBarIcon: ({ focused }) =>
+          route.name === 'Cart'
+            ? <CartTabIcon focused={focused} />
+            : <TabIcon label={route.name} focused={focused} />,
       })}
     >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Orders" component={OrdersStack} />
+      <Tab.Screen name="HomeTab" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="OrdersTab" component={OrdersStack} options={{ tabBarLabel: 'Orders' }} />
       <Tab.Screen name="Cart" component={CartScreen} />
-      <Tab.Screen name="Profile" component={ProfileStack} />
+      <Tab.Screen name="AlertsTab" component={NotificationsScreen} options={{ tabBarLabel: 'Alerts' }} />
+      <Tab.Screen name="ProfileTab" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 }

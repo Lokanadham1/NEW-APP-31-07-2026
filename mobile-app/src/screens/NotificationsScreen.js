@@ -35,10 +35,12 @@ export default function NotificationsScreen({ navigation }) {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const onBack = navigation.canGoBack() ? () => navigation.goBack() : undefined;
+
   if (loading) {
     return (
       <View style={styles.screen}>
-        <Header title="Notifications" onBack={() => navigation.goBack()} />
+        <Header title="Alerts" onBack={onBack} />
         <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
       </View>
     );
@@ -47,8 +49,8 @@ export default function NotificationsScreen({ navigation }) {
   return (
     <View style={styles.screen}>
       <Header
-        title="Notifications"
-        onBack={() => navigation.goBack()}
+        title="Alerts"
+        onBack={onBack}
         right={unreadCount > 0 ? (
           <Pressable onPress={markAllRead}><Text style={styles.markAll}>Mark all read</Text></Pressable>
         ) : null}

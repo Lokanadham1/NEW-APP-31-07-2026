@@ -41,7 +41,7 @@ export default function CartScreen({ navigation }) {
           <Text style={styles.emptySubtitle}>Add some delicious food to get started</Text>
           <PrimaryButton
             title="Browse menu"
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.navigate('HomeTab')}
             style={{ marginTop: spacing.lg, paddingHorizontal: spacing.xl }}
           />
         </View>

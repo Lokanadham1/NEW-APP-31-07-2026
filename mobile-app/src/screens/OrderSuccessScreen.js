@@ -24,13 +24,13 @@ export default function OrderSuccessScreen({ route, navigation }) {
 
       <PrimaryButton
         title="Track my order"
-        onPress={() => navigation.navigate('MainTabs', { screen: 'Orders' })}
+        onPress={() => navigation.navigate('MainTabs', { screen: 'OrdersTab' })}
         style={{ width: '100%', marginTop: spacing.lg }}
       />
       <PrimaryButton
         title="Back to home"
         variant="outline"
-        onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
+        onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
         style={{ width: '100%', marginTop: spacing.sm }}
       />
     </View>
