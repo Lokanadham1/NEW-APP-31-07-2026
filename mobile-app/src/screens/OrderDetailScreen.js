@@ -4,6 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
+import OrderStatusTimeline from '../components/OrderStatusTimeline';
+import { STATUS_LABEL } from '../theme/orderStatus';
 import { api } from '../api/client';
 
 const TIME_SLOTS = ['09:00', '11:00', '13:00', '15:00', '17:00', '19:00'];
@@ -18,11 +20,6 @@ function nextDays(count) {
   }
   return days;
 }
-
-const STATUS_LABEL = {
-  pending: 'Pending approval', approved: 'Approved', completed: 'Completed',
-  rejected: 'Rejected', cancelled: 'Cancelled',
-};
 
 export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
@@ -109,6 +106,11 @@ export default function OrderDetailScreen({ route, navigation }) {
     <View style={styles.screen}>
       <Header title={`Order #${order.id}`} subtitle={STATUS_LABEL[order.status] || order.status} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Order status</Text>
+          <OrderStatusTimeline status={order.status} />
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Items</Text>
           {order.items.map((it, idx) => (

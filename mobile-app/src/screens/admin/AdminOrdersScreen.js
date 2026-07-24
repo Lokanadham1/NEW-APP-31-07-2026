@@ -4,9 +4,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
 import StatusPill from '../../components/StatusPill';
+import { STATUS_LABEL } from '../../theme/orderStatus';
 import { api } from '../../api/client';
 
-const FILTERS = ['all', 'pending', 'approved', 'completed', 'rejected', 'cancelled'];
+const FILTERS = ['all', 'pending', 'approved', 'preparing', 'ready', 'out_for_delivery', 'completed', 'rejected', 'cancelled'];
+const FILTER_LABEL = { all: 'All', ...STATUS_LABEL };
 
 export default function AdminOrdersScreen({ navigation }) {
   const [status, setStatus] = useState('all');
@@ -43,7 +45,7 @@ export default function AdminOrdersScreen({ navigation }) {
               onPress={() => setStatus(f)}
             >
               <Text style={[styles.chipText, status === f && styles.chipTextActive]}>
-                {f[0].toUpperCase() + f.slice(1)}
+                {FILTER_LABEL[f] || f}
               </Text>
             </Pressable>
           ))}

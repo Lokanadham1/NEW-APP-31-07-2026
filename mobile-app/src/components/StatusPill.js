@@ -1,21 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
-
-const STATUS_LABEL = {
-  pending: 'Pending approval',
-  approved: 'Approved',
-  completed: 'Completed',
-  rejected: 'Rejected',
-  cancelled: 'Cancelled',
-};
-const STATUS_COLOR = {
-  pending: colors.goldDark,
-  approved: colors.primary,
-  completed: colors.primaryDark,
-  rejected: colors.danger,
-  cancelled: colors.slate,
-};
+import { STATUS_LABEL, STATUS_COLOR } from '../theme/orderStatus';
 
 export default function StatusPill({ status }) {
   const color = STATUS_COLOR[status] || colors.slate;

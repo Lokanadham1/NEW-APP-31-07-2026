@@ -5,10 +5,22 @@ import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
 import PrimaryButton from '../../components/PrimaryButton';
 import StatusPill from '../../components/StatusPill';
+import OrderStatusTimeline from '../../components/OrderStatusTimeline';
 import { api } from '../../api/client';
 
 const TIME_SLOTS = ['09:00', '11:00', '13:00', '15:00', '17:00', '19:00'];
 const PAYMENT_MODES = ['Cash', 'UPI', 'Card', 'Bank Transfer'];
+
+// Each status's forward step: label + the endpoint path that advances it.
+const NEXT_STEP = {
+  approved: { label: 'Start preparing', path: 'prepare' },
+  preparing: { label: 'Mark ready', path: 'ready' },
+  ready: { label: 'Out for delivery', path: 'out-for-delivery' },
+  out_for_delivery: { label: 'Mark delivered', path: 'deliver' },
+};
+// Statuses where "Mark delivered" is offered separately as a manual
+// override, matching the backend's deliver endpoint (works from any status).
+const IN_PROGRESS_STATUSES = ['approved', 'preparing', 'ready', 'out_for_delivery'];
 
 function nextDays(count) {
   const days = [];
@@ -83,6 +95,11 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
     <View style={styles.screen}>
       <Header title={`Order #${order.id}`} onBack={() => navigation.goBack()} right={<StatusPill status={order.status} />} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Order status</Text>
+          <OrderStatusTimeline status={order.status} />
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Customer</Text>
           <Text style={styles.line}>{order.customerName} · {order.customerMobile}</Text>
@@ -197,8 +214,22 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
               />
             </>
           )}
-          {order.status === 'approved' && (
-            <PrimaryButton title="Mark delivered" loading={busy} onPress={() => run(() => api.post(`/orders/${orderId}/deliver`))} />
+          {NEXT_STEP[order.status] && (
+            <PrimaryButton
+              title={NEXT_STEP[order.status].label}
+              loading={busy}
+              onPress={() => run(() => api.post(`/orders/${orderId}/${NEXT_STEP[order.status].path}`))}
+            />
+          )}
+          {/* Manual override, matching the backend's permissive deliver endpoint —
+              available at any in-progress stage, not just the last one. */}
+          {IN_PROGRESS_STATUSES.includes(order.status) && order.status !== 'out_for_delivery' && (
+            <PrimaryButton
+              title="Mark delivered (skip remaining steps)"
+              variant="outline"
+              loading={busy}
+              onPress={() => run(() => api.post(`/orders/${orderId}/deliver`))}
+            />
           )}
           {['pending', 'approved'].includes(order.status) && mode !== 'reschedule' && (
             <PrimaryButton title="Reschedule delivery" variant="outline" onPress={() => setMode('reschedule')} />
