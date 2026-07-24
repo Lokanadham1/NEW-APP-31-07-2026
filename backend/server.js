@@ -2,6 +2,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { query, initSchema, mapProduct, mapOrder, mapUser, mapNotif } = require('./db');
 const {
   sendOtp, verifyOtp, findOrCreateUser, issueToken,
@@ -9,11 +11,23 @@ const {
 } = require('./auth');
 
 const app = express();
+app.set('trust proxy', 1); // Render/most hosts sit behind a proxy — needed for rate-limit to see the real client IP
+app.use(helmet());
 // Lock CORS to your frontend origin in production (comma-separated allowed).
 // Leave CORS_ORIGIN unset to allow all (dev only).
 const origins = (process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
 app.use(cors(origins.length ? { origin: origins } : {}));
 app.use(express.json({ limit: '6mb' })); // base64 product images
+
+// OTP request/verify are the only unauthenticated, abusable-at-scale routes
+// (SMS cost per request, brute-forceable 4-digit code) — cap both per IP.
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again later.' },
+});
 
 const today = () => new Date().toISOString().split('T')[0];
 const nowIso = () => new Date().toISOString();
@@ -75,14 +89,14 @@ async function getUser(id) {
 // ══════════════════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════════════════
-app.post('/auth/request-otp', h(async (req, res) => {
+app.post('/auth/request-otp', otpLimiter, h(async (req, res) => {
   const { mobile } = req.body;
   if (!isValidMobile(mobile)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number.' });
   const result = await sendOtp(mobile);
   res.json(result); // { sent:true, devCode? }
 }));
 
-app.post('/auth/verify-otp', h(async (req, res) => {
+app.post('/auth/verify-otp', otpLimiter, h(async (req, res) => {
   const { mobile, code } = req.body;
   if (!isValidMobile(mobile)) return res.status(400).json({ error: 'Invalid mobile.' });
   const v = await verifyOtp(mobile, code);
@@ -101,7 +115,7 @@ app.post('/auth/verify-otp', h(async (req, res) => {
 // Firebase Phone Auth: client verifies the OTP with the Firebase SDK, then posts
 // the resulting ID token here. We verify it, map the phone to a user, apply the
 // same admin allowlist, and issue our own JWT.
-app.post('/auth/firebase', h(async (req, res) => {
+app.post('/auth/firebase', otpLimiter, h(async (req, res) => {
   try {
     const { idToken } = req.body;
     if (!idToken) return res.status(400).json({ error: 'Missing idToken.' });
@@ -244,19 +258,31 @@ app.post('/orders', authRequired, h(async (req, res) => {
     norm.push({ productId: p.id, name: p.name, price: p.price, quantity: Math.max(1, +it.quantity) });
   }
   const subtotal = norm.reduce((s, i) => s + i.price * i.quantity, 0);
-
-  const id = Math.floor(1000 + Math.random() * 9000);
   const displayName = u.catering_name || u.name;
-  await query(
-    `INSERT INTO orders (id,user_id,customer_name,customer_mobile,customer_address,
-       items_json,subtotal,gst,delivery,total,status,created_date,created_at,
-       delivery_date,delivery_time,remarks,contact_person,paid_amount,payments_json,
-       address_edit_used,reschedule_used)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,0,0,$8,'pending',$9,$10,$11,$12,$13,$14,0,'[]',false,false)`,
-    [id, u.id, displayName, u.mobile, u.address, JSON.stringify(norm),
-     subtotal, subtotal, today(), nowIso(), deliveryDate, deliveryTime,
-     remarks || null, u.name]
-  );
+
+  // Order ids are 4-digit random numbers (bill-friendly), not auto-increment,
+  // so collisions are expected as order volume grows — retry with a fresh id
+  // rather than 500ing on the (fairly common, birthday-paradox) unique clash.
+  let id;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    id = Math.floor(1000 + Math.random() * 9000);
+    try {
+      await query(
+        `INSERT INTO orders (id,user_id,customer_name,customer_mobile,customer_address,
+           items_json,subtotal,gst,delivery,total,status,created_date,created_at,
+           delivery_date,delivery_time,remarks,contact_person,paid_amount,payments_json,
+           address_edit_used,reschedule_used)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,0,0,$8,'pending',$9,$10,$11,$12,$13,$14,0,'[]',false,false)`,
+        [id, u.id, displayName, u.mobile, u.address, JSON.stringify(norm),
+         subtotal, subtotal, today(), nowIso(), deliveryDate, deliveryTime,
+         remarks || null, u.name]
+      );
+      break;
+    } catch (e) {
+      if (e.code === '23505' && attempt < 9) continue; // unique_violation — try another id
+      throw e;
+    }
+  }
 
   await notify(0, `New Order #${id} from ${displayName} (${u.mobile}) — ₹${subtotal} | Delivery: ${deliveryDate} at ${deliveryTime}`);
   res.status(201).json(mapOrder(await getOrder(id)));
@@ -426,7 +452,8 @@ app.get('/notifications', authRequired, h(async (req, res) => {
 }));
 
 app.post('/notifications/:id/read', authRequired, h(async (req, res) => {
-  await query('UPDATE notifications SET read=true WHERE id=$1', [req.params.id]);
+  const audience = req.user.role === 'admin' ? 0 : req.user.id;
+  await query('UPDATE notifications SET read=true WHERE id=$1 AND user_id=$2', [req.params.id, audience]);
   res.json({ ok: true });
 }));
 
@@ -460,7 +487,11 @@ app.get('/health', (req, res) => res.json({ ok: true, time: nowIso() }));
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ error: err.message || 'Server error' });
+  // Every intentional error response is sent directly by its route (400/401/
+  // 403/404 above) — anything reaching here is unexpected, so never relay its
+  // raw message (stack traces, driver/SQL detail) to the client in production.
+  const message = process.env.NODE_ENV === 'production' ? 'Server error' : (err.message || 'Server error');
+  res.status(500).json({ error: message });
 });
 
 const PORT = process.env.PORT || 4000;

@@ -37,6 +37,7 @@ Any Node host works (Render, Railway, Fly.io, a VPS) — these steps are for Ren
    No persistent disk needed — the database is Postgres, hosted elsewhere.
 4. Environment variables:
    ```
+   NODE_ENV=production
    DATABASE_URL=<your Supabase/Neon connection string>
    JWT_SECRET=<long random string>
    ADMIN_MOBILES=<owner's 10-digit mobile number(s), comma-separated>
@@ -44,6 +45,9 @@ Any Node host works (Render, Railway, Fly.io, a VPS) — these steps are for Ren
    OTP_PROVIDER=firebase
    FIREBASE_SERVICE_ACCOUNT=/etc/secrets/serviceAccountKey.json
    ```
+   `NODE_ENV=production` matters here: it switches the error handler to hide
+   internal error details (stack traces, SQL errors) from API responses —
+   without it those details go straight to the client.
    For `FIREBASE_SERVICE_ACCOUNT`: Render → **Secret Files** → upload the JSON you downloaded
    in step 2, mounted at that path.
 5. Deploy. Note the URL, e.g. `https://roti-api.onrender.com`.
@@ -66,15 +70,16 @@ Any Node host works (Render, Railway, Fly.io, a VPS) — these steps are for Ren
 - [ ] HTTPS (Render gives it automatically).
 - [ ] Product images: use hosted URLs (Firebase Storage / Cloudinary), not base64, to keep
       the database small — wired up in Phase 3/5.
-- [ ] Add rate-limiting on `/auth/*` (e.g. `express-rate-limit`) to prevent OTP abuse —
-      recommended before public launch.
+- [x] Rate-limiting on `/auth/*` (10 requests / 15 min / IP via `express-rate-limit`) —
+      already wired in, nothing to do here.
+- [x] Security headers via `helmet`, and `NODE_ENV=production` hides internal error
+      details from API responses (see step 4 above) — already wired in.
 - [ ] Verify the full flow on production: signup → order → admin accept → pay → customer
       sees status.
 
 ---
 
 ## 5. Recommended next hardening (post-launch)
-- `express-rate-limit` on auth routes.
 - Structured logging + error monitoring (Sentry free tier).
 - Scheduled Postgres backups (Supabase/Neon both offer this on free/low tiers).
 - Websockets or short polling so admin/customer see each other's changes live

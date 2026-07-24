@@ -20,6 +20,21 @@ npm run seed              # optional: demo products/customers/orders (also creat
 npm start                 # http://localhost:4000
 ```
 
+## Testing
+```bash
+# Point at a throwaway Postgres database — tests create/reuse tables in it,
+# never your dev or production database.
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/roti_apitest npm test
+```
+Spawns the real server as a child process (not a mock) against that database and
+runs the full request lifecycle over HTTP: OTP login (admin allowlist included),
+authorization boundaries (401/403), the order lifecycle's business rules (server-side
+price recomputation, once-only reschedule/address-edit, 6-hour cancel window, payment
+can't exceed the balance), the notification-ownership fix, admin broadcast/send
+validation, and the `/auth/*` rate limit. `test/rate-limit.test.js` runs against its
+own server instance (a fresh in-memory limiter) so it doesn't eat into the OTP-call
+budget the main suite needs for its own logins.
+
 ## How admin access works (no second login)
 - `ADMIN_MOBILES` in `.env` is the **server-side allowlist** (e.g. `7730001663`).
 - On `verify-otp` the server checks the number against that list and stamps
