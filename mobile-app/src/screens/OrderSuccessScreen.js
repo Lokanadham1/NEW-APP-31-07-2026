@@ -24,13 +24,22 @@ export default function OrderSuccessScreen({ route, navigation }) {
 
       <PrimaryButton
         title="Track my order"
-        onPress={() => navigation.navigate('MainTabs', { screen: 'OrdersTab' })}
+        onPress={() => {
+          // Reset the Home stack behind us first, so a later tap on the Home
+          // tab lands on Home rather than this screen (this was still on top
+          // of the Home stack since it's nested there, not a standalone route).
+          navigation.popToTop();
+          navigation.navigate('MainTabs', {
+            screen: 'OrdersTab',
+            params: { screen: 'OrderDetail', params: { orderId } },
+          });
+        }}
         style={{ width: '100%', marginTop: spacing.lg }}
       />
       <PrimaryButton
         title="Back to home"
         variant="outline"
-        onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
+        onPress={() => navigation.popToTop()}
         style={{ width: '100%', marginTop: spacing.sm }}
       />
     </View>
