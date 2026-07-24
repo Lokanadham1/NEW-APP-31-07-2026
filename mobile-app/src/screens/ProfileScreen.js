@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,7 +22,7 @@ export default function ProfileScreen({ navigation }) {
   ];
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
         <Image source={require('../../assets/logo.png')} style={styles.avatar} />
         <Text style={styles.name}>{user?.cateringName || user?.name || 'Guest'}</Text>
@@ -46,7 +47,7 @@ export default function ProfileScreen({ navigation }) {
       <Pressable style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Log out</Text>
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 

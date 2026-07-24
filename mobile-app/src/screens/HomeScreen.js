@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,10 @@ import {
   Pressable,
   RefreshControl,
   ActivityIndicator,
+  Linking,
+  Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '../theme/colors';
 import { iconForCategory } from '../theme/categoryIcons';
 import CategoryCard from '../components/CategoryCard';
@@ -17,12 +20,29 @@ import MenuItemCard from '../components/MenuItemCard';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductsContext';
+import { api } from '../api/client';
 
 export default function HomeScreen({ navigation }) {
   const [query, setQuery] = useState('');
+  const [adminPhone, setAdminPhone] = useState(null);
+  const insets = useSafeAreaInsets();
   const { addToCart } = useCart();
   const { user } = useAuth();
   const { products, loading, error, refresh } = useProducts();
+
+  useEffect(() => {
+    api.get('/config', { auth: false }).then((c) => setAdminPhone(c.adminPhone)).catch(() => {});
+  }, []);
+
+  const handleCallAdmin = () => {
+    if (!adminPhone) {
+      Alert.alert('Not available', "The admin's contact number isn't configured yet.");
+      return;
+    }
+    Linking.openURL(`tel:${adminPhone}`).catch(() =>
+      Alert.alert('Could not open dialer', adminPhone)
+    );
+  };
 
   const categories = useMemo(() => {
     const names = [...new Set(products.map((p) => p.category).filter(Boolean))];
@@ -39,7 +59,7 @@ export default function HomeScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.screen, styles.centered]}>
+      <View style={[styles.screen, styles.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
@@ -51,13 +71,16 @@ export default function HomeScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
-        <View style={styles.topBar}>
-          <View>
+        <View style={[styles.topBar, { paddingTop: insets.top + spacing.lg }]}>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>
               Hi {(user?.name || user?.cateringName || 'there').split(' ')[0]} 👋
             </Text>
             <Text style={styles.location}>{user?.address || 'Add your delivery address'}</Text>
           </View>
+          <Pressable onPress={handleCallAdmin} style={styles.callBtn} hitSlop={10}>
+            <Text style={styles.callBtnIcon}>📞</Text>
+          </Pressable>
         </View>
 
         <View style={styles.searchWrap}>
@@ -149,8 +172,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   topBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
   greeting: {
@@ -162,6 +186,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.slate,
     marginTop: 2,
+  },
+  callBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  callBtnIcon: {
+    fontSize: 18,
   },
   searchWrap: {
     paddingHorizontal: spacing.lg,

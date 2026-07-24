@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme/colors';
 
 export default function Header({ title, subtitle, onBack, right }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.left}>
         {onBack ? (
           <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn}>
@@ -29,7 +31,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
     paddingBottom: spacing.md,
     backgroundColor: colors.cream,
   },

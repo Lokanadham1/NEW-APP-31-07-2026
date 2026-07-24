@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '../theme/colors';
 import PrimaryButton from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
@@ -59,6 +60,7 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.cream }} edges={['top']}>
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.cream }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -133,6 +135,7 @@ export default function LoginScreen({ navigation }) {
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
