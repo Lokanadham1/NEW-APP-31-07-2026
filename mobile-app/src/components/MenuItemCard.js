@@ -40,54 +40,52 @@ function QtyInput({ quantity, onSetQuantity }) {
 // The stepper is always visible (no separate ADD button) — tapping + from 0
 // adds the item, matching the cart screen's -/qty/+ control everywhere.
 //
-// Layout: thumb sits beside a text column (name, then the full description
-// — no truncation — directly under it), and price + stepper share a bottom
-// row spanning the full card width underneath.
+// Layout: thumb, a text column (name + price on one line, full description
+// underneath), and the stepper all share a single row, vertically centered.
 export default function MenuItemCard({ item, onPress, quantity = 0, onIncrease, onDecrease, onSetQuantity }) {
   const available = item.status !== 'out_of_stock';
 
   return (
     <Pressable onPress={onPress} style={styles.card}>
-      <View style={styles.topRow}>
-        <View style={styles.thumb}>
-          <Text style={styles.thumbEmoji}>{iconForCategory(item.category)}</Text>
-        </View>
-        <View style={styles.textCol}>
-          <Text style={styles.name}>{item.name}</Text>
-          {item.description ? (
-            <Text style={styles.desc}>{item.description}</Text>
-          ) : null}
-        </View>
+      <View style={styles.thumb}>
+        <Text style={styles.thumbEmoji}>{iconForCategory(item.category)}</Text>
       </View>
 
-      <View style={styles.bottomRow}>
-        <View style={styles.priceCol}>
+      <View style={styles.textCol}>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.price}>₹{item.price}</Text>
-          {!available ? <Text style={styles.outOfStock}>Out of stock</Text> : null}
         </View>
-        {available ? (
-          <View style={styles.stepper}>
-            <Pressable
-              style={styles.stepBtn}
-              onPress={onDecrease}
-              disabled={quantity === 0}
-              hitSlop={8}
-            >
-              <Text style={[styles.stepBtnText, quantity === 0 && styles.stepBtnTextDisabled]}>–</Text>
-            </Pressable>
-            <QtyInput quantity={quantity} onSetQuantity={onSetQuantity} />
-            <Pressable style={styles.stepBtn} onPress={onIncrease} hitSlop={8}>
-              <Text style={styles.stepBtnText}>+</Text>
-            </Pressable>
-          </View>
+        {item.description ? (
+          <Text style={styles.desc}>{item.description}</Text>
         ) : null}
+        {!available ? <Text style={styles.outOfStock}>Out of stock</Text> : null}
       </View>
+
+      {available ? (
+        <View style={styles.stepper}>
+          <Pressable
+            style={styles.stepBtn}
+            onPress={onDecrease}
+            disabled={quantity === 0}
+            hitSlop={8}
+          >
+            <Text style={[styles.stepBtnText, quantity === 0 && styles.stepBtnTextDisabled]}>–</Text>
+          </Pressable>
+          <QtyInput quantity={quantity} onSetQuantity={onSetQuantity} />
+          <Pressable style={styles.stepBtn} onPress={onIncrease} hitSlop={8}>
+            <Text style={styles.stepBtnText}>+</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radii.md,
     padding: spacing.md,
@@ -95,13 +93,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
   thumb: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderRadius: radii.sm,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
@@ -109,13 +103,20 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   thumbEmoji: {
-    fontSize: 22,
+    fontSize: 24,
   },
   textCol: {
     flex: 1,
+    paddingRight: spacing.sm,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   name: {
-    fontSize: 15,
+    flexShrink: 1,
+    fontSize: 15.5,
     fontWeight: '700',
     color: colors.ink,
   },
@@ -125,19 +126,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 3,
   },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-  },
-  priceCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   price: {
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '800',
     color: colors.primaryDark,
   },
@@ -145,6 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '700',
     color: colors.danger,
+    marginTop: 3,
   },
   stepper: {
     flexDirection: 'row',
