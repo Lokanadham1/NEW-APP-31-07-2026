@@ -100,6 +100,12 @@ export default function AdminDashboardScreen({ navigation }) {
           <StatCard label="Outstanding" value={`₹${totalPending}`} highlight={totalPending > 0} onPress={() => navigation.navigate('AdminCustomersTab')} />
         </View>
 
+        <Text style={styles.sectionTitle}>All-time</Text>
+        <View style={styles.statGrid}>
+          <StatCard label="Total orders (all-time)" value={summary?.totalOrdersAllTime ?? 0} onPress={goToOrders('all')} />
+          <StatCard label="Total revenue (all-time)" value={`₹${summary?.totalRevenueAllTime ?? 0}`} />
+        </View>
+
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Today's items</Text>
         </View>
