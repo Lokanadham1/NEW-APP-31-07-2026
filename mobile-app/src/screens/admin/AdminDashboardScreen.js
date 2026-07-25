@@ -1,10 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
 import StatusPill from '../../components/StatusPill';
 import StatCard from '../../components/StatCard';
+import DatePickerModal from '../../components/DatePickerModal';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 
@@ -13,21 +15,31 @@ import { useAuth } from '../../context/AuthContext';
 // stand-in for "auto-update when a new/completed/cancelled order arrives".
 const POLL_INTERVAL_MS = 20000;
 
+const todayIso = () => new Date().toISOString().split('T')[0];
+
+function formatDate(iso) {
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function AdminDashboardScreen({ navigation }) {
   const { logout } = useAuth();
-  const [summary, setSummary] = useState(null); // { totalToday, pendingToday, acceptedToday, completedToday, products }
+  const [summary, setSummary] = useState(null); // { date, totalToday, pendingToday, acceptedToday, completedToday, products }
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [selectedDate, setSelectedDate] = useState(todayIso());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const isToday = selectedDate === todayIso();
 
   const load = useCallback(async (isRefresh) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
       const [dash, o, c] = await Promise.all([
-        api.get('/admin/dashboard'), api.get('/orders'), api.get('/customers'),
+        api.get(`/admin/dashboard?date=${selectedDate}`), api.get('/orders'), api.get('/customers'),
       ]);
       setSummary(dash);
       setOrders(o);
@@ -38,14 +50,17 @@ export default function AdminDashboardScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedDate]);
 
-  // Refresh on focus, then keep polling quietly (no spinner) while focused.
+  // Refresh on focus/date change, then keep polling quietly (no spinner)
+  // while focused — but only when viewing today, since a past day's
+  // production won't change.
   useFocusEffect(useCallback(() => {
     load(false);
+    if (!isToday) return undefined;
     const timer = setInterval(() => load(true), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [load]));
+  }, [load, isToday]));
 
   if (loading) {
     return (
@@ -82,7 +97,29 @@ export default function AdminDashboardScreen({ navigation }) {
       >
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Text style={styles.sectionTitle}>Today's production</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>{isToday ? "Today's production" : `Production for ${formatDate(selectedDate)}`}</Text>
+          {!isToday ? (
+            <Pressable onPress={() => setSelectedDate(todayIso())}>
+              <Text style={styles.seeAll}>Back to today</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <Pressable style={styles.dateField} onPress={() => setDatePickerOpen(true)}>
+          <Ionicons name="calendar-outline" size={16} color={colors.slate} />
+          <Text style={styles.dateFieldText}>{formatDate(selectedDate)}</Text>
+          <Text style={styles.dateFieldChange}>Change</Text>
+        </Pressable>
+        <DatePickerModal
+          visible={datePickerOpen}
+          value={selectedDate}
+          onClose={() => setDatePickerOpen(false)}
+          onSelect={setSelectedDate}
+          disablePastAndToday={false}
+          disableFuture
+        />
+
         <View style={styles.statGrid}>
           <StatCard label="Total orders today" value={summary?.totalToday ?? 0} onPress={goToOrders('all')} />
           <StatCard
@@ -107,10 +144,12 @@ export default function AdminDashboardScreen({ navigation }) {
         </View>
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Today's items</Text>
+          <Text style={styles.sectionTitle}>{isToday ? "Today's items" : 'Items for that day'}</Text>
         </View>
         {products.length === 0 ? (
-          <Text style={[styles.muted, { marginBottom: spacing.lg }]}>No orders placed today yet.</Text>
+          <Text style={[styles.muted, { marginBottom: spacing.lg }]}>
+            {isToday ? 'No orders placed today yet.' : 'No orders were placed on that day.'}
+          </Text>
         ) : (
           <View style={[styles.card, { marginBottom: spacing.lg }]}>
             <View style={styles.tableHeaderRow}>
@@ -182,6 +221,14 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.ink, marginBottom: spacing.sm },
   seeAll: { fontSize: 13, fontWeight: '700', color: colors.primary },
   muted: { color: colors.slate, fontSize: 13.5 },
+  dateField: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: 10,
+    marginBottom: spacing.md, alignSelf: 'flex-start',
+  },
+  dateFieldText: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  dateFieldChange: { fontSize: 12, fontWeight: '700', color: colors.primary, marginLeft: spacing.xs },
   orderRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,

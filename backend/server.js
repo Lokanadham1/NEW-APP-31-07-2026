@@ -472,14 +472,17 @@ const IN_PROGRESS_STATUSES = ['approved', 'preparing', 'ready', 'out_for_deliver
 const NOT_BILLABLE_STATUSES = ['rejected', 'cancelled'];
 const billableOrders = (orders) => orders.filter((o) => !NOT_BILLABLE_STATUSES.includes(o.status));
 
-// Today's production summary: order counts by stage, plus per-product
-// ordered/completed/remaining quantities — scoped to orders *placed* today
-// (not orders delivered today), matching a same-day/pre-order catering
-// workflow where "today's production" means today's incoming orders.
+// Production summary for a single day: order counts by stage, plus
+// per-product ordered/completed/remaining quantities — scoped to orders
+// *placed* on that day (not orders delivered that day), matching a
+// same-day/pre-order catering workflow. Defaults to today; pass ?date=
+// (YYYY-MM-DD) to view any other day's production instead.
 // Also includes all-time totals (orders placed and revenue billed since the
-// app went live), separate from the today-only figures above.
+// app went live), separate from the single-day figures above.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
-  const { rows } = await query('SELECT * FROM orders WHERE created_date=$1', [today()]);
+  const date = DATE_RE.test(req.query.date || '') ? req.query.date : today();
+  const { rows } = await query('SELECT * FROM orders WHERE created_date=$1', [date]);
   const orders = rows.map(mapOrder);
 
   const productStats = new Map(); // productId -> { productId, name, orderedQty, completedQty }
@@ -501,6 +504,7 @@ app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
   const totalRevenueAllTime = billableOrders(allOrders).reduce((s, o) => s + o.total, 0);
 
   res.json({
+    date,
     totalToday: orders.length,
     pendingToday: orders.filter((o) => o.status === 'pending').length,
     acceptedToday: orders.filter((o) => IN_PROGRESS_STATUSES.includes(o.status)).length,

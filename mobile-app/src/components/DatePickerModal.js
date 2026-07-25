@@ -22,17 +22,26 @@ function startOfToday() {
 }
 
 // A lightweight month-grid calendar (no native dependency, so it works in
-// Expo Go without a rebuild). Past dates — and today, since delivery is
-// scheduled at least a day out in this catering flow, matching the old
-// chip-list's behavior — are disabled.
-export default function DatePickerModal({ visible, value, onClose, onSelect }) {
+// Expo Go without a rebuild).
+//
+// disablePastAndToday (default true): the Checkout use case — delivery is
+// scheduled at least a day out in this catering flow, so today and earlier
+// are disabled.
+// disableFuture (default false): the admin dashboard's "view a past day's
+// production" use case — today and earlier are selectable, future is not.
+export default function DatePickerModal({
+  visible, value, onClose, onSelect,
+  disablePastAndToday = true, disableFuture = false,
+}) {
   const today = startOfToday();
   const initial = value ? new Date(`${value}T00:00:00`) : today;
   const [viewYear, setViewYear] = useState(initial.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial.getMonth());
 
-  const canGoPrev = viewYear > today.getFullYear() ||
+  const canGoPrev = !disablePastAndToday || viewYear > today.getFullYear() ||
     (viewYear === today.getFullYear() && viewMonth > today.getMonth());
+  const canGoNext = !disableFuture || viewYear < today.getFullYear() ||
+    (viewYear === today.getFullYear() && viewMonth < today.getMonth());
 
   const goPrev = () => {
     if (!canGoPrev) return;
@@ -40,6 +49,7 @@ export default function DatePickerModal({ visible, value, onClose, onSelect }) {
     else setViewMonth((m) => m - 1);
   };
   const goNext = () => {
+    if (!canGoNext) return;
     if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
     else setViewMonth((m) => m + 1);
   };
@@ -62,8 +72,8 @@ export default function DatePickerModal({ visible, value, onClose, onSelect }) {
               <Ionicons name="chevron-back" size={22} color={canGoPrev ? colors.primary : colors.border} />
             </Pressable>
             <Text style={styles.monthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
-            <Pressable onPress={goNext} hitSlop={10} style={styles.navArrow}>
-              <Ionicons name="chevron-forward" size={22} color={colors.primary} />
+            <Pressable onPress={goNext} disabled={!canGoNext} hitSlop={10} style={styles.navArrow}>
+              <Ionicons name="chevron-forward" size={22} color={canGoNext ? colors.primary : colors.border} />
             </Pressable>
           </View>
 
@@ -78,7 +88,8 @@ export default function DatePickerModal({ visible, value, onClose, onSelect }) {
               if (day === null) return <View key={idx} style={styles.cell} />;
               const iso = toIso(viewYear, viewMonth, day);
               const cellDate = new Date(viewYear, viewMonth, day);
-              const disabled = cellDate <= today;
+              const disabled = (disablePastAndToday && cellDate <= today) ||
+                (disableFuture && cellDate > today);
               const selected = value === iso;
               return (
                 <Pressable

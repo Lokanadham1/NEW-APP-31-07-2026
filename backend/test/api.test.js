@@ -325,6 +325,19 @@ test('admin dashboard: today\'s counts and per-product breakdown', async () => {
   assert.ok(res.body.totalRevenueAllTime > 0);
 });
 
+test('admin dashboard: ?date= filters production to that day, invalid dates fall back to today', async () => {
+  const todayIso = new Date().toISOString().split('T')[0];
+
+  const yesterday = await call(base, '/admin/dashboard?date=2020-01-01', { token: admin.token });
+  assert.equal(yesterday.status, 200);
+  assert.equal(yesterday.body.date, '2020-01-01');
+  assert.equal(yesterday.body.totalToday, 0, 'no orders exist on this arbitrary past date');
+
+  const junk = await call(base, '/admin/dashboard?date=not-a-date', { token: admin.token });
+  assert.equal(junk.status, 200);
+  assert.equal(junk.body.date, todayIso, 'an invalid date must fall back to today rather than erroring');
+});
+
 test('customer dashboard: lifetime summary excludes rejected/cancelled orders', async () => {
   const before = await call(base, '/me/dashboard', { token: customer1.token });
   assert.equal(before.status, 200);
