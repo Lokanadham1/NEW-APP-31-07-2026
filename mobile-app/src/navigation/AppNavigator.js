@@ -140,7 +140,18 @@ function MainTabs() {
             : <TabIcon label={route.name} focused={focused} />,
       })}
     >
-      <Tab.Screen name="HomeTab" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeStack}
+        options={{ tabBarLabel: 'Home' }}
+        listeners={({ navigation }) => ({
+          // Same fix as Orders below: without this, tapping Home after
+          // drilling into Menu/ItemDetail/Checkout resumes that screen
+          // instead of going to Home, which reads as "the tab did nothing"
+          // or "it went to the wrong screen".
+          tabPress: () => navigation.navigate('HomeTab', { screen: 'Home' }),
+        })}
+      />
       <Tab.Screen
         name="OrdersTab"
         component={OrdersStack}
@@ -218,8 +229,25 @@ function AdminTabs() {
           tabPress: () => navigation.navigate('AdminOrdersTab', { screen: 'AdminOrders', params: { status: 'all' } }),
         })}
       />
-      <AdminTab.Screen name="AdminProductsTab" component={AdminProductsStack} options={{ tabBarLabel: 'Products' }} />
-      <AdminTab.Screen name="AdminCustomersTab" component={AdminCustomersStack} options={{ tabBarLabel: 'Customers' }} />
+      <AdminTab.Screen
+        name="AdminProductsTab"
+        component={AdminProductsStack}
+        options={{ tabBarLabel: 'Products' }}
+        listeners={({ navigation }) => ({
+          // Same fix as Orders above: without this, tapping Products after
+          // adding/editing one (AdminProductForm) resumes that form instead
+          // of the list.
+          tabPress: () => navigation.navigate('AdminProductsTab', { screen: 'AdminProducts' }),
+        })}
+      />
+      <AdminTab.Screen
+        name="AdminCustomersTab"
+        component={AdminCustomersStack}
+        options={{ tabBarLabel: 'Customers' }}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate('AdminCustomersTab', { screen: 'AdminCustomers' }),
+        })}
+      />
     </AdminTab.Navigator>
   );
 }
