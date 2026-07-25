@@ -20,15 +20,17 @@ import MenuItemCard from '../components/MenuItemCard';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductsContext';
+import { useNotificationsBadge } from '../context/NotificationsContext';
 import { api } from '../api/client';
 
 export default function HomeScreen({ navigation }) {
   const [query, setQuery] = useState('');
   const [adminPhone, setAdminPhone] = useState(null);
   const insets = useSafeAreaInsets();
-  const { items: cartItems, addToCart, updateQuantity } = useCart();
+  const { items: cartItems, addToCart, updateQuantity, setQuantity } = useCart();
   const { user } = useAuth();
   const { products, loading, error, refresh } = useProducts();
+  const { unreadCount } = useNotificationsBadge();
 
   useEffect(() => {
     api.get('/config', { auth: false }).then((c) => setAdminPhone(c.adminPhone)).catch(() => {});
@@ -80,9 +82,19 @@ export default function HomeScreen({ navigation }) {
             </Text>
             <Text style={styles.location}>{user?.address || 'Add your delivery address'}</Text>
           </View>
-          <Pressable onPress={handleCallAdmin} style={styles.callBtn} hitSlop={10}>
-            <Text style={styles.callBtnIcon}>📞</Text>
-          </Pressable>
+          <View style={styles.topBarActions}>
+            <Pressable onPress={handleCallAdmin} style={styles.callBtn} hitSlop={10}>
+              <Text style={styles.callBtnIcon}>📞</Text>
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('Notifications')} style={styles.callBtn} hitSlop={10}>
+              <Text style={styles.callBtnIcon}>🔔</Text>
+              {unreadCount > 0 ? (
+                <View style={styles.alertsBadge}>
+                  <Text style={styles.alertsBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.searchWrap}>
@@ -110,11 +122,10 @@ export default function HomeScreen({ navigation }) {
                 key={item.id}
                 item={item}
                 onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
-                onAdd={() => addToCart(item, 1)}
                 quantity={qtyFor(item.id)}
                 onIncrease={() => addToCart(item, 1)}
                 onDecrease={() => updateQuantity(item.id, qtyFor(item.id) - 1)}
-                onSetQuantity={(qty) => updateQuantity(item.id, qty)}
+                onSetQuantity={(qty) => setQuantity(item, qty)}
               />
             ))}
           </View>
@@ -157,11 +168,10 @@ export default function HomeScreen({ navigation }) {
                   key={item.id}
                   item={item}
                   onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
-                  onAdd={() => addToCart(item, 1)}
                   quantity={qtyFor(item.id)}
                   onIncrease={() => addToCart(item, 1)}
                   onDecrease={() => updateQuantity(item.id, qtyFor(item.id) - 1)}
-                  onSetQuantity={(qty) => updateQuantity(item.id, qty)}
+                  onSetQuantity={(qty) => setQuantity(item, qty)}
                 />
               ))}
             </View>
@@ -197,6 +207,11 @@ const styles = StyleSheet.create({
     color: colors.slate,
     marginTop: 2,
   },
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   callBtn: {
     width: 40,
     height: 40,
@@ -207,6 +222,23 @@ const styles = StyleSheet.create({
   },
   callBtnIcon: {
     fontSize: 18,
+  },
+  alertsBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertsBadgeText: {
+    color: '#fff',
+    fontSize: 9.5,
+    fontWeight: '800',
   },
   searchWrap: {
     paddingHorizontal: spacing.lg,

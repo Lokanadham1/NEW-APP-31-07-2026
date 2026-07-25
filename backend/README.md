@@ -67,6 +67,7 @@ issues the same JWT (same allowlist logic as `/auth/verify-otp`). Set
 ### Profile (auth)
 | GET | `/me` | | current user |
 | PUT | `/me/profile` | `{name, cateringName, address}` | marks profile complete |
+| GET | `/me/dashboard` | | lifetime summary for the signed-in customer: total orders, distinct items ordered, total quantity, bill amount, outstanding balance (rejected/cancelled orders excluded) |
 
 ### Products
 | GET | `/products` | | public |

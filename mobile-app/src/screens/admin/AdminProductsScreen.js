@@ -52,6 +52,7 @@ export default function AdminProductsScreen({ navigation }) {
             <Text style={styles.addLink}>+ Add</Text>
           </Pressable>
         }
+        alertsScreen="AdminNotifications"
       />
 
       {loading ? (

@@ -5,8 +5,9 @@ import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
 import PrimaryButton from '../../components/PrimaryButton';
 import { api } from '../../api/client';
+import { useNotificationsBadge } from '../../context/NotificationsContext';
 
-export default function AdminNotificationsScreen({ route }) {
+export default function AdminNotificationsScreen({ route, navigation }) {
   const [notifications, setNotifications] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +19,7 @@ export default function AdminNotificationsScreen({ route }) {
   const [sending, setSending] = useState(false);
   const [sentMsg, setSentMsg] = useState('');
   const [error, setError] = useState('');
+  const { refresh: refreshBadge } = useNotificationsBadge();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,7 +34,7 @@ export default function AdminNotificationsScreen({ route }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { load(); refreshBadge(); }, [load, refreshBadge]));
 
   useEffect(() => {
     if (route.params?.toUserId) {
@@ -40,6 +42,18 @@ export default function AdminNotificationsScreen({ route }) {
       setRecipientName(route.params.toName);
     }
   }, [route.params?.toUserId, route.params?.toName]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markRead = async (id) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    try { await api.post(`/notifications/${id}/read`); } catch { /* best-effort */ } finally { refreshBadge(); }
+  };
+
+  const markAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try { await api.post('/notifications/read-all'); } catch { /* best-effort */ } finally { refreshBadge(); }
+  };
 
   const handleSend = async () => {
     setSending(true);
@@ -61,7 +75,15 @@ export default function AdminNotificationsScreen({ route }) {
 
   return (
     <View style={styles.screen}>
-      <Header title="Notifications" subtitle="Admin" />
+      <Header
+        title="Notifications"
+        subtitle="Admin"
+        onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        showAlerts={false}
+        right={unreadCount > 0 ? (
+          <Pressable onPress={markAllRead}><Text style={styles.markAll}>Mark all read</Text></Pressable>
+        ) : null}
+      />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Send a message</Text>
@@ -130,10 +152,13 @@ export default function AdminNotificationsScreen({ route }) {
             keyExtractor={(n) => String(n.id)}
             scrollEnabled={false}
             renderItem={({ item: n }) => (
-              <View style={styles.activityRow}>
+              <Pressable
+                style={[styles.activityRow, !n.read && styles.activityRowUnread]}
+                onPress={() => !n.read && markRead(n.id)}
+              >
                 <Text style={styles.activityMessage}>{n.message}</Text>
                 <Text style={styles.activityDate}>{n.createdDate}</Text>
-              </View>
+              </Pressable>
             )}
             ListEmptyComponent={<Text style={styles.muted}>Nothing yet.</Text>}
           />
@@ -145,6 +170,7 @@ export default function AdminNotificationsScreen({ route }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
+  markAll: { fontSize: 12.5, fontWeight: '700', color: colors.primary },
   card: {
     backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,
     padding: spacing.md, marginBottom: spacing.lg,
@@ -177,6 +203,10 @@ const styles = StyleSheet.create({
   activityRow: {
     backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,
     padding: spacing.md, marginTop: spacing.sm,
+  },
+  activityRowUnread: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   activityMessage: { fontSize: 13.5, color: colors.ink, lineHeight: 19 },
   activityDate: { fontSize: 11.5, color: colors.slate, marginTop: 4 },

@@ -27,7 +27,7 @@ export default function AdminCustomersScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <Header title="Customers" subtitle={`${customers.length} customer${customers.length !== 1 ? 's' : ''}`} />
+      <Header title="Customers" subtitle={`${customers.length} customer${customers.length !== 1 ? 's' : ''}`} alertsScreen="AdminNotifications" />
 
       <View style={styles.searchWrap}>
         <TextInput

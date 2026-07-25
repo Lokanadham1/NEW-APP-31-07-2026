@@ -502,6 +502,37 @@ app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
 }));
 
 // ══════════════════════════════════════════════════════════════════════════
+// CUSTOMER DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════
+// Lifetime summary for the signed-in customer. Rejected/cancelled orders are
+// excluded from the money and item totals — they were never fulfilled, so
+// counting them would overstate what the customer actually ordered/owes.
+app.get('/me/dashboard', authRequired, h(async (req, res) => {
+  const { rows } = await query('SELECT * FROM orders WHERE user_id=$1', [req.user.id]);
+  const allOrders = rows.map(mapOrder);
+  const orders = allOrders.filter((o) => o.status !== 'rejected' && o.status !== 'cancelled');
+
+  const productIds = new Set();
+  let totalQuantity = 0;
+  for (const o of orders) {
+    for (const item of o.items) {
+      productIds.add(item.productId);
+      totalQuantity += item.quantity;
+    }
+  }
+  const totalBillAmount = orders.reduce((s, o) => s + o.total, 0);
+  const totalPaid = orders.reduce((s, o) => s + o.paidAmount, 0);
+
+  res.json({
+    totalOrders: allOrders.length,
+    totalItemsOrdered: productIds.size,
+    totalQuantityOrdered: totalQuantity,
+    totalBillAmount,
+    outstanding: Math.max(0, totalBillAmount - totalPaid),
+  });
+}));
+
+// ══════════════════════════════════════════════════════════════════════════
 // CUSTOMERS (admin)
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/customers', authRequired, adminRequired, h(async (req, res) => {

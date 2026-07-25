@@ -4,11 +4,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import { api } from '../api/client';
+import { useNotificationsBadge } from '../context/NotificationsContext';
 
 export default function NotificationsScreen({ navigation }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { refresh: refreshBadge } = useNotificationsBadge();
 
   const load = useCallback(async (isRefresh) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
@@ -21,16 +23,16 @@ export default function NotificationsScreen({ navigation }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(false); }, [load]));
+  useFocusEffect(useCallback(() => { load(false); refreshBadge(); }, [load, refreshBadge]));
 
   const markRead = async (id) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    try { await api.post(`/notifications/${id}/read`); } catch { /* best-effort */ }
+    try { await api.post(`/notifications/${id}/read`); } catch { /* best-effort */ } finally { refreshBadge(); }
   };
 
   const markAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    try { await api.post('/notifications/read-all'); } catch { /* best-effort */ }
+    try { await api.post('/notifications/read-all'); } catch { /* best-effort */ } finally { refreshBadge(); }
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -40,7 +42,7 @@ export default function NotificationsScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.screen}>
-        <Header title="Alerts" onBack={onBack} />
+        <Header title="Alerts" onBack={onBack} showAlerts={false} />
         <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
       </View>
     );
@@ -51,6 +53,7 @@ export default function NotificationsScreen({ navigation }) {
       <Header
         title="Alerts"
         onBack={onBack}
+        showAlerts={false}
         right={unreadCount > 0 ? (
           <Pressable onPress={markAllRead}><Text style={styles.markAll}>Mark all read</Text></Pressable>
         ) : null}

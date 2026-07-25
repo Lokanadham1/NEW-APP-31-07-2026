@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
+import DatePickerModal from '../components/DatePickerModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
@@ -16,26 +17,19 @@ const TIME_SLOTS = [
   { value: '19:00', label: '7:00 PM' },
 ];
 
-function nextDays(count) {
-  const days = [];
-  const today = new Date();
-  for (let i = 1; i <= count; i += 1) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const iso = d.toISOString().split('T')[0];
-    const label = i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-    days.push({ value: iso, label });
-  }
-  return days;
+function formatDate(iso) {
+  if (!iso) return null;
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function CheckoutScreen({ navigation }) {
   const { items, subtotal, clearCart } = useCart();
   const { user } = useAuth();
-  const days = useMemo(() => nextDays(10), []);
 
   const [deliveryDate, setDeliveryDate] = useState(null);
   const [deliveryTime, setDeliveryTime] = useState(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [remarks, setRemarks] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -74,17 +68,18 @@ export default function CheckoutScreen({ navigation }) {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery date</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {days.map((d) => (
-              <Pressable
-                key={d.value}
-                style={[styles.chip, deliveryDate === d.value && styles.chipActive]}
-                onPress={() => setDeliveryDate(d.value)}
-              >
-                <Text style={[styles.chipText, deliveryDate === d.value && styles.chipTextActive]}>{d.label}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <Pressable style={styles.dateField} onPress={() => setDatePickerOpen(true)}>
+            <Text style={[styles.dateFieldText, !deliveryDate && styles.dateFieldPlaceholder]}>
+              {deliveryDate ? formatDate(deliveryDate) : 'Choose a delivery date'}
+            </Text>
+            <Text style={styles.dateFieldIcon}>📅</Text>
+          </Pressable>
+          <DatePickerModal
+            visible={datePickerOpen}
+            value={deliveryDate}
+            onClose={() => setDatePickerOpen(false)}
+            onSelect={setDeliveryDate}
+          />
         </View>
 
         <View style={styles.section}>
@@ -171,6 +166,29 @@ const styles = StyleSheet.create({
     color: colors.slate,
     marginTop: spacing.sm,
     fontStyle: 'italic',
+  },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 13,
+  },
+  dateFieldText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  dateFieldPlaceholder: {
+    color: colors.slate,
+    fontWeight: '500',
+  },
+  dateFieldIcon: {
+    fontSize: 16,
   },
   chip: {
     borderWidth: 1,

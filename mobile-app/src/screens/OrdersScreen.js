@@ -1,22 +1,33 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import StatusPill from '../components/StatusPill';
+import { STATUS_LABEL } from '../theme/orderStatus';
 import { api } from '../api/client';
 
-export default function OrdersScreen({ navigation }) {
+const FILTERS = ['all', 'pending', 'approved', 'preparing', 'ready', 'out_for_delivery', 'completed', 'rejected', 'cancelled'];
+const FILTER_LABEL = { all: 'All', ...STATUS_LABEL };
+
+export default function OrdersScreen({ navigation, route }) {
+  const [status, setStatus] = useState(route.params?.status || 'all');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  // This screen stays mounted across tab switches, so a filter passed in
+  // from elsewhere needs to be picked up even when it isn't the first render.
+  useEffect(() => {
+    if (route.params?.status) setStatus(route.params.status);
+  }, [route.params?.status]);
+
   const load = useCallback(async (isRefresh) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
-      const rows = await api.get('/orders');
+      const rows = await api.get(`/orders?status=${status}`);
       setOrders(rows);
     } catch (e) {
       setError(e.message);
@@ -24,24 +35,33 @@ export default function OrdersScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [status]);
 
   useFocusEffect(useCallback(() => { load(false); }, [load]));
-
-  if (loading) {
-    return (
-      <View style={styles.screen}>
-        <Header title="Your orders" />
-        <View style={styles.emptyWrap}><ActivityIndicator color={colors.primary} size="large" /></View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.screen}>
       <Header title="Your orders" subtitle={`${orders.length} order${orders.length !== 1 ? 's' : ''}`} />
 
-      {error ? (
+      <View style={styles.filterWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg }}>
+          {FILTERS.map((f) => (
+            <Pressable
+              key={f}
+              style={[styles.chip, status === f && styles.chipActive]}
+              onPress={() => setStatus(f)}
+            >
+              <Text style={[styles.chipText, status === f && styles.chipTextActive]}>
+                {FILTER_LABEL[f] || f}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      {loading ? (
+        <View style={styles.emptyWrap}><ActivityIndicator color={colors.primary} size="large" /></View>
+      ) : error ? (
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyTitle}>Couldn't load your orders</Text>
           <Text style={styles.emptySubtitle}>{error}</Text>
@@ -49,8 +69,10 @@ export default function OrdersScreen({ navigation }) {
       ) : orders.length === 0 ? (
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyEmoji}>📦</Text>
-          <Text style={styles.emptyTitle}>No orders yet</Text>
-          <Text style={styles.emptySubtitle}>Your placed orders will show up here</Text>
+          <Text style={styles.emptyTitle}>{status === 'all' ? 'No orders yet' : `No ${(FILTER_LABEL[status] || status).toLowerCase()} orders`}</Text>
+          <Text style={styles.emptySubtitle}>
+            {status === 'all' ? 'Your placed orders will show up here' : 'Try a different filter above'}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -83,6 +105,15 @@ export default function OrdersScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
+  filterWrap: { marginBottom: spacing.sm },
+  chip: {
+    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
+    borderRadius: radii.pill, paddingHorizontal: 14, paddingVertical: 8,
+    marginRight: spacing.sm,
+  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  chipTextActive: { color: '#fff' },
   list: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,

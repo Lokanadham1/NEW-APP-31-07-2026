@@ -30,6 +30,24 @@ export function CartProvider({ children }) {
     });
   }, []);
 
+  // Like updateQuantity, but also adds a new entry if the item isn't in the
+  // cart yet — needed for manual quantity entry starting from 0 (updateQuantity
+  // can only update an entry that already exists).
+  const setQuantity = useCallback((item, quantity) => {
+    setItems((prev) => {
+      if (quantity <= 0) {
+        return prev.filter((entry) => entry.item.id !== item.id);
+      }
+      const existing = prev.find((entry) => entry.item.id === item.id);
+      if (existing) {
+        return prev.map((entry) =>
+          entry.item.id === item.id ? { ...entry, quantity } : entry
+        );
+      }
+      return [...prev, { item, quantity }];
+    });
+  }, []);
+
   const removeFromCart = useCallback((itemId) => {
     setItems((prev) => prev.filter((entry) => entry.item.id !== itemId));
   }, []);
@@ -50,6 +68,7 @@ export function CartProvider({ children }) {
     items,
     addToCart,
     updateQuantity,
+    setQuantity,
     removeFromCart,
     clearCart,
     subtotal,

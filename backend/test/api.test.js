@@ -303,6 +303,27 @@ test('admin dashboard: today\'s counts and per-product breakdown', async () => {
   assert.equal(entry.remainingQty, entry.orderedQty - entry.completedQty);
 });
 
+test('customer dashboard: lifetime summary excludes rejected/cancelled orders', async () => {
+  const before = await call(base, '/me/dashboard', { token: customer1.token });
+  assert.equal(before.status, 200);
+  const ordersBefore = before.body.totalOrders;
+  const qtyBefore = before.body.totalQuantityOrdered;
+
+  const placed = await call(base, '/orders', {
+    method: 'POST', token: customer1.token,
+    body: { items: [{ productId, quantity: 3 }], deliveryDate: '2026-09-11', deliveryTime: '11:00' },
+  });
+  assert.equal(placed.status, 201);
+  await call(base, `/orders/${placed.body.id}/reject`, { method: 'POST', token: admin.token });
+
+  const after = await call(base, '/me/dashboard', { token: customer1.token });
+  assert.equal(after.status, 200);
+  // totalOrders counts every order placed (including this now-rejected one)...
+  assert.equal(after.body.totalOrders, ordersBefore + 1);
+  // ...but the rejected order's quantity must not leak into the money/quantity totals.
+  assert.equal(after.body.totalQuantityOrdered, qtyBefore);
+});
+
 test('product create/update notifies customers only when it actually matters', async () => {
   const before = await call(base, '/notifications', { token: customer1.token });
   const beforeCount = before.body.length;

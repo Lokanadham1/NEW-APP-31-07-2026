@@ -7,15 +7,13 @@ export const navigationRef = createNavigationContainerRef();
 
 // Routes to whichever notifications screen matches the root tab the user is
 // currently on — a tap can arrive while either a customer or an admin is
-// signed in, and they have separate tab structures.
+// signed in, and they have separate inboxes. Both screens are registered at
+// the root stack level (see AppNavigator), so a plain navigate() reaches
+// them regardless of which tab/stack is currently focused.
 export function navigateToNotifications() {
   if (!navigationRef.isReady()) return;
   const state = navigationRef.getRootState();
   const currentRouteName = state?.routes?.[state.index]?.name;
 
-  if (currentRouteName === 'AdminTabs') {
-    navigationRef.navigate('AdminTabs', { screen: 'AdminNotificationsTab', params: { screen: 'AdminNotifications' } });
-  } else {
-    navigationRef.navigate('MainTabs', { screen: 'AlertsTab' });
-  }
+  navigationRef.navigate(currentRouteName === 'AdminTabs' ? 'AdminNotifications' : 'Notifications');
 }

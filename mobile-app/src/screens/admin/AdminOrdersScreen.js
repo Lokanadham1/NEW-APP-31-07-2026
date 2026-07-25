@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, Pressable, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../../theme/colors';
@@ -10,12 +10,19 @@ import { api } from '../../api/client';
 const FILTERS = ['all', 'pending', 'approved', 'preparing', 'ready', 'out_for_delivery', 'completed', 'rejected', 'cancelled'];
 const FILTER_LABEL = { all: 'All', ...STATUS_LABEL };
 
-export default function AdminOrdersScreen({ navigation }) {
-  const [status, setStatus] = useState('all');
+export default function AdminOrdersScreen({ navigation, route }) {
+  const [status, setStatus] = useState(route.params?.status || 'all');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+
+  // The screen stays mounted across tab switches, so a filter passed in from
+  // elsewhere (e.g. the dashboard's "Pending" card) needs to be picked up
+  // even when this isn't the first time the screen renders.
+  useEffect(() => {
+    if (route.params?.status) setStatus(route.params.status);
+  }, [route.params?.status]);
 
   const load = useCallback(async (isRefresh) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
@@ -34,7 +41,7 @@ export default function AdminOrdersScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <Header title="Orders" subtitle={`${orders.length} order${orders.length !== 1 ? 's' : ''}`} />
+      <Header title="Orders" subtitle={`${orders.length} order${orders.length !== 1 ? 's' : ''}`} alertsScreen="AdminNotifications" />
 
       <View style={styles.filterWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg }}>

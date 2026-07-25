@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { AuthProvider } from './src/context/AuthContext';
 import { ProductsProvider } from './src/context/ProductsContext';
 import { CartProvider } from './src/context/CartContext';
+import { NotificationsProvider } from './src/context/NotificationsContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigateToNotifications } from './src/navigation/navigationRef';
 
@@ -23,12 +24,14 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ProductsProvider>
-          <CartProvider>
-            <StatusBar style="dark" />
-            <AppNavigator />
-          </CartProvider>
-        </ProductsProvider>
+        <NotificationsProvider>
+          <ProductsProvider>
+            <CartProvider>
+              <StatusBar style="dark" />
+              <AppNavigator />
+            </CartProvider>
+          </ProductsProvider>
+        </NotificationsProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

@@ -37,9 +37,9 @@ function QtyInput({ quantity, onSetQuantity }) {
 }
 
 // quantity: how many of this item are already in the cart (0 = not added).
-// When quantity > 0 the ADD button becomes a stepper, matching the cart
-// screen's -/qty/+ control instead of a silent no-feedback tap.
-export default function MenuItemCard({ item, onPress, onAdd, quantity = 0, onIncrease, onDecrease, onSetQuantity }) {
+// The stepper is always visible (no separate ADD button) — tapping + from 0
+// adds the item, matching the cart screen's -/qty/+ control everywhere.
+export default function MenuItemCard({ item, onPress, quantity = 0, onIncrease, onDecrease, onSetQuantity }) {
   const available = item.status !== 'out_of_stock';
 
   return (
@@ -58,21 +58,20 @@ export default function MenuItemCard({ item, onPress, onAdd, quantity = 0, onInc
         </View>
       </View>
       {available ? (
-        quantity > 0 ? (
-          <View style={styles.stepper}>
-            <Pressable style={styles.stepBtn} onPress={onDecrease} hitSlop={8}>
-              <Text style={styles.stepBtnText}>–</Text>
-            </Pressable>
-            <QtyInput quantity={quantity} onSetQuantity={onSetQuantity} />
-            <Pressable style={styles.stepBtn} onPress={onIncrease} hitSlop={8}>
-              <Text style={styles.stepBtnText}>+</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable onPress={onAdd} style={styles.addBtn} hitSlop={8}>
-            <Text style={styles.addBtnText}>ADD</Text>
+        <View style={styles.stepper}>
+          <Pressable
+            style={styles.stepBtn}
+            onPress={onDecrease}
+            disabled={quantity === 0}
+            hitSlop={8}
+          >
+            <Text style={[styles.stepBtnText, quantity === 0 && styles.stepBtnTextDisabled]}>–</Text>
           </Pressable>
-        )
+          <QtyInput quantity={quantity} onSetQuantity={onSetQuantity} />
+          <Pressable style={styles.stepBtn} onPress={onIncrease} hitSlop={8}>
+            <Text style={styles.stepBtnText}>+</Text>
+          </Pressable>
+        </View>
       ) : null}
     </Pressable>
   );
@@ -131,19 +130,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.danger,
   },
-  addBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderRadius: radii.sm,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: colors.primaryLight,
-  },
-  addBtnText: {
-    color: colors.primaryDark,
-    fontWeight: '800',
-    fontSize: 12,
-  },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -163,12 +149,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
-  stepValue: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: colors.ink,
-    minWidth: 16,
-    textAlign: 'center',
+  stepBtnTextDisabled: {
+    color: colors.border,
   },
   stepInput: {
     fontSize: 13.5,

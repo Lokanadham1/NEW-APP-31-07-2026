@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
+import { useNotificationsBadge } from '../context/NotificationsContext';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotificationsBadge();
 
   const handleLogout = async () => {
     await logout();
@@ -24,6 +26,14 @@ export default function ProfileScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
+        <Pressable onPress={() => navigation.navigate('Notifications')} style={styles.alertsBtn} hitSlop={10}>
+          <Text style={styles.alertsIcon}>🔔</Text>
+          {unreadCount > 0 ? (
+            <View style={styles.alertsBadge}>
+              <Text style={styles.alertsBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
         <Image source={require('../../assets/logo.png')} style={styles.avatar} />
         <Text style={styles.name}>{user?.cateringName || user?.name || 'Guest'}</Text>
         <Text style={styles.phone}>{user?.mobile}</Text>
@@ -59,6 +69,38 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    position: 'relative',
+  },
+  alertsBtn: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertsIcon: {
+    fontSize: 17,
+  },
+  alertsBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertsBadgeText: {
+    color: '#fff',
+    fontSize: 9.5,
+    fontWeight: '800',
   },
   avatar: {
     width: 64,

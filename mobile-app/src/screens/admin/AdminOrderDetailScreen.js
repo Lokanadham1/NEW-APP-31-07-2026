@@ -75,7 +75,7 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.screen}>
-        <Header title="Order details" onBack={() => navigation.goBack()} />
+        <Header title="Order details" onBack={() => navigation.goBack()} alertsScreen="AdminNotifications" />
         <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
       </View>
     );
@@ -83,7 +83,7 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
   if (error || !order) {
     return (
       <View style={styles.screen}>
-        <Header title="Order details" onBack={() => navigation.goBack()} />
+        <Header title="Order details" onBack={() => navigation.goBack()} alertsScreen="AdminNotifications" />
         <View style={styles.centered}><Text style={styles.errorText}>{error || 'Order not found.'}</Text></View>
       </View>
     );
@@ -93,7 +93,7 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.screen}>
-      <Header title={`Order #${order.id}`} onBack={() => navigation.goBack()} right={<StatusPill status={order.status} />} />
+      <Header title={`Order #${order.id}`} onBack={() => navigation.goBack()} right={<StatusPill status={order.status} />} alertsScreen="AdminNotifications" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Order status</Text>

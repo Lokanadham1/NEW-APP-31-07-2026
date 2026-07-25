@@ -21,6 +21,7 @@ import OrdersScreen from '../screens/OrdersScreen';
 import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import CustomerDashboardScreen from '../screens/CustomerDashboardScreen';
 
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
@@ -40,7 +41,6 @@ const Tab = createBottomTabNavigator();
 const AdminOrdersStackNav = createNativeStackNavigator();
 const AdminProductsStackNav = createNativeStackNavigator();
 const AdminCustomersStackNav = createNativeStackNavigator();
-const AdminNotificationsStackNav = createNativeStackNavigator();
 const AdminTab = createBottomTabNavigator();
 
 // Tab-level route names are deliberately distinct from the first screen name
@@ -49,17 +49,23 @@ const AdminTab = createBottomTabNavigator();
 // triggers React Navigation's "Found screens with the same name nested
 // inside one another" warning — and produced real bugs here (ambiguous
 // back-navigation) before this was fixed, not just a console warning.
+//
+// Alerts is not a bottom tab — it lives in the header (next to the call
+// button on Home, next to a bell icon elsewhere) since it's a lightweight
+// inbox, not a primary section of the app. Both "Notifications" and
+// "AdminNotifications" are registered at the root stack level (below) so
+// they're reachable from any screen regardless of which tab/stack it's
+// nested in.
 const TAB_ICONS = {
   HomeTab: '🏠',
   OrdersTab: '📦',
   Cart: '🛒',
-  AlertsTab: '🔔',
+  DashboardTab: '📊',
   ProfileTab: '👤',
   AdminDashboardTab: '📊',
   AdminOrdersTab: '📦',
   AdminProductsTab: '🍽️',
   AdminCustomersTab: '👥',
-  AdminNotificationsTab: '🔔',
 };
 
 function TabIcon({ label, focused, badge }) {
@@ -140,13 +146,14 @@ function MainTabs() {
             // OrderDetail pushed via "Track my order". That leaves the tab
             // opening a random past order instead of the orders list, which
             // is confusing since nothing on the tab bar shows you're deep in
-            // a stack. Always reset to the list on tab press.
-            navigation.navigate('OrdersTab', { screen: 'OrdersList' });
+            // a stack. Always reset to the list (and clear any status filter
+            // left over from a deep link, e.g. from the dashboard) on tab press.
+            navigation.navigate('OrdersTab', { screen: 'OrdersList', params: { status: 'all' } });
           },
         })}
       />
       <Tab.Screen name="Cart" component={CartScreen} />
-      <Tab.Screen name="AlertsTab" component={NotificationsScreen} options={{ tabBarLabel: 'Alerts' }} />
+      <Tab.Screen name="DashboardTab" component={CustomerDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
       <Tab.Screen name="ProfileTab" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
@@ -180,14 +187,6 @@ function AdminCustomersStack() {
   );
 }
 
-function AdminNotificationsStack() {
-  return (
-    <AdminNotificationsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <AdminNotificationsStackNav.Screen name="AdminNotifications" component={AdminNotificationsScreen} />
-    </AdminNotificationsStackNav.Navigator>
-  );
-}
-
 function AdminTabs() {
   return (
     <AdminTab.Navigator
@@ -201,10 +200,20 @@ function AdminTabs() {
       })}
     >
       <AdminTab.Screen name="AdminDashboardTab" component={AdminDashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
-      <AdminTab.Screen name="AdminOrdersTab" component={AdminOrdersStack} options={{ tabBarLabel: 'Orders' }} />
+      <AdminTab.Screen
+        name="AdminOrdersTab"
+        component={AdminOrdersStack}
+        options={{ tabBarLabel: 'Orders' }}
+        listeners={({ navigation }) => ({
+          // Same fix as the customer OrdersTab: always land on the full,
+          // unfiltered list on tab press, instead of resuming a specific
+          // order detail or filter left over from elsewhere (e.g. the
+          // dashboard's "Pending" card).
+          tabPress: () => navigation.navigate('AdminOrdersTab', { screen: 'AdminOrders', params: { status: 'all' } }),
+        })}
+      />
       <AdminTab.Screen name="AdminProductsTab" component={AdminProductsStack} options={{ tabBarLabel: 'Products' }} />
       <AdminTab.Screen name="AdminCustomersTab" component={AdminCustomersStack} options={{ tabBarLabel: 'Customers' }} />
-      <AdminTab.Screen name="AdminNotificationsTab" component={AdminNotificationsStack} options={{ tabBarLabel: 'Alerts' }} />
     </AdminTab.Navigator>
   );
 }
@@ -218,6 +227,8 @@ export default function AppNavigator() {
         <RootStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
         <RootStack.Screen name="MainTabs" component={MainTabs} />
         <RootStack.Screen name="AdminTabs" component={AdminTabs} />
+        <RootStack.Screen name="Notifications" component={NotificationsScreen} />
+        <RootStack.Screen name="AdminNotifications" component={AdminNotificationsScreen} />
       </RootStack.Navigator>
     </NavigationContainer>
   );

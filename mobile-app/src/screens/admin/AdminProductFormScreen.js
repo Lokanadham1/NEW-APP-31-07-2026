@@ -65,7 +65,7 @@ export default function AdminProductFormScreen({ route, navigation }) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.cream }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header title={existing ? 'Edit product' : 'New product'} onBack={() => navigation.goBack()} />
+      <Header title={existing ? 'Edit product' : 'New product'} onBack={() => navigation.goBack()} alertsScreen="AdminNotifications" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }} keyboardShouldPersistTaps="handled">
         <Text style={styles.label}>Name</Text>
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Poli" placeholderTextColor={colors.slate} />

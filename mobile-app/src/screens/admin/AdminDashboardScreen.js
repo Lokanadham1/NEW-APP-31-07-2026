@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
 import StatusPill from '../../components/StatusPill';
+import StatCard from '../../components/StatCard';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 
@@ -49,7 +50,7 @@ export default function AdminDashboardScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.screen}>
-        <Header title="Dashboard" />
+        <Header title="Dashboard" alertsScreen="AdminNotifications" />
         <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
       </View>
     );
@@ -64,12 +65,16 @@ export default function AdminDashboardScreen({ navigation }) {
     navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
+  const goToOrders = (status) => () =>
+    navigation.navigate('AdminOrdersTab', { screen: 'AdminOrders', params: { status } });
+
   return (
     <View style={styles.screen}>
       <Header
         title="Dashboard"
         subtitle="Admin"
         right={<Pressable onPress={handleLogout}><Text style={styles.logoutLink}>Log out</Text></Pressable>}
+        alertsScreen="AdminNotifications"
       />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
@@ -79,15 +84,20 @@ export default function AdminDashboardScreen({ navigation }) {
 
         <Text style={styles.sectionTitle}>Today's production</Text>
         <View style={styles.statGrid}>
-          <StatCard label="Total orders today" value={summary?.totalToday ?? 0} />
-          <StatCard label="Pending" value={summary?.pendingToday ?? 0} highlight={(summary?.pendingToday ?? 0) > 0} />
-          <StatCard label="Accepted" value={summary?.acceptedToday ?? 0} />
-          <StatCard label="Completed" value={summary?.completedToday ?? 0} />
+          <StatCard label="Total orders today" value={summary?.totalToday ?? 0} onPress={goToOrders('all')} />
+          <StatCard
+            label="Pending"
+            value={summary?.pendingToday ?? 0}
+            highlight={(summary?.pendingToday ?? 0) > 0}
+            onPress={goToOrders('pending')}
+          />
+          <StatCard label="Accepted" value={summary?.acceptedToday ?? 0} onPress={goToOrders('approved')} />
+          <StatCard label="Completed" value={summary?.completedToday ?? 0} onPress={goToOrders('completed')} />
         </View>
 
         <View style={styles.statGrid}>
-          <StatCard label="Customers" value={customers.length} />
-          <StatCard label="Outstanding" value={`₹${totalPending}`} highlight={totalPending > 0} />
+          <StatCard label="Customers" value={customers.length} onPress={() => navigation.navigate('AdminCustomersTab')} />
+          <StatCard label="Outstanding" value={`₹${totalPending}`} highlight={totalPending > 0} onPress={() => navigation.navigate('AdminCustomersTab')} />
         </View>
 
         <View style={styles.sectionHeaderRow}>
@@ -145,31 +155,12 @@ export default function AdminDashboardScreen({ navigation }) {
   );
 }
 
-function StatCard({ label, value, highlight }) {
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={[styles.statValue, highlight && { color: colors.goldDark }]}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.danger, fontSize: 13, fontWeight: '600', marginBottom: spacing.md },
   logoutLink: { color: colors.danger, fontSize: 13, fontWeight: '700' },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  statCard: {
-    width: '47%',
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  statLabel: { fontSize: 12, color: colors.slate },
-  statValue: { fontSize: 22, fontWeight: '800', color: colors.ink, marginTop: 2 },
   card: {
     backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,
     padding: spacing.md,

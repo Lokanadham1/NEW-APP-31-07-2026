@@ -27,7 +27,7 @@ export default function AdminCustomerDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.screen}>
-        <Header title="Customer" onBack={() => navigation.goBack()} />
+        <Header title="Customer" onBack={() => navigation.goBack()} alertsScreen="AdminNotifications" />
         <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
       </View>
     );
@@ -35,7 +35,7 @@ export default function AdminCustomerDetailScreen({ route, navigation }) {
   if (error || !customer) {
     return (
       <View style={styles.screen}>
-        <Header title="Customer" onBack={() => navigation.goBack()} />
+        <Header title="Customer" onBack={() => navigation.goBack()} alertsScreen="AdminNotifications" />
         <View style={styles.centered}><Text style={styles.errorText}>{error || 'Not found.'}</Text></View>
       </View>
     );
@@ -43,14 +43,14 @@ export default function AdminCustomerDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.screen}>
-      <Header title={customer.name} subtitle={`${customer.customerId} · ${customer.mobile}`} onBack={() => navigation.goBack()} />
+      <Header title={customer.name} subtitle={`${customer.customerId} · ${customer.mobile}`} onBack={() => navigation.goBack()} alertsScreen="AdminNotifications" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <Text style={styles.address}>{customer.address}</Text>
 
         <PrimaryButton
           title="Message this customer"
           variant="outline"
-          onPress={() => navigation.navigate('AdminNotificationsTab', { screen: 'AdminNotifications', params: { toUserId: customer.userId, toName: customer.name } })}
+          onPress={() => navigation.navigate('AdminNotifications', { toUserId: customer.userId, toName: customer.name })}
           style={{ marginTop: spacing.md, marginBottom: spacing.lg }}
         />
 
