@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,8 @@ import {
   Pressable,
   RefreshControl,
   ActivityIndicator,
-  Linking,
-  Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '../theme/colors';
 import { iconForCategory } from '../theme/categoryIcons';
@@ -21,30 +20,16 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductsContext';
 import { useNotificationsBadge } from '../context/NotificationsContext';
-import { api } from '../api/client';
+import { useAdminPhone } from '../context/AdminPhoneContext';
 
 export default function HomeScreen({ navigation }) {
   const [query, setQuery] = useState('');
-  const [adminPhone, setAdminPhone] = useState(null);
   const insets = useSafeAreaInsets();
   const { items: cartItems, addToCart, updateQuantity, setQuantity } = useCart();
   const { user } = useAuth();
   const { products, loading, error, refresh } = useProducts();
   const { unreadCount } = useNotificationsBadge();
-
-  useEffect(() => {
-    api.get('/config', { auth: false }).then((c) => setAdminPhone(c.adminPhone)).catch(() => {});
-  }, []);
-
-  const handleCallAdmin = () => {
-    if (!adminPhone) {
-      Alert.alert('Not available', "The admin's contact number isn't configured yet.");
-      return;
-    }
-    Linking.openURL(`tel:${adminPhone}`).catch(() =>
-      Alert.alert('Could not open dialer', adminPhone)
-    );
-  };
+  const { callAdmin } = useAdminPhone();
 
   const categories = useMemo(() => {
     const names = [...new Set(products.map((p) => p.category).filter(Boolean))];
@@ -83,11 +68,11 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.location}>{user?.address || 'Add your delivery address'}</Text>
           </View>
           <View style={styles.topBarActions}>
-            <Pressable onPress={handleCallAdmin} style={styles.callBtn} hitSlop={10}>
-              <Text style={styles.callBtnIcon}>📞</Text>
+            <Pressable onPress={callAdmin} style={styles.callBtn} hitSlop={10}>
+              <Ionicons name="call-outline" size={18} color={colors.primaryDark} />
             </Pressable>
             <Pressable onPress={() => navigation.navigate('Notifications')} style={styles.callBtn} hitSlop={10}>
-              <Text style={styles.callBtnIcon}>🔔</Text>
+              <Ionicons name="notifications-outline" size={19} color={colors.primaryDark} />
               {unreadCount > 0 ? (
                 <View style={styles.alertsBadge}>
                   <Text style={styles.alertsBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -219,9 +204,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  callBtnIcon: {
-    fontSize: 18,
   },
   alertsBadge: {
     position: 'absolute',

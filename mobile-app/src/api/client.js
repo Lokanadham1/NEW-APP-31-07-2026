@@ -31,7 +31,21 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   }
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // The server returned something that isn't JSON — a stale/mismatched
+      // backend, a proxy error page, a wrong API_URL, etc. Surface a message
+      // that points at the actual problem instead of a raw parse error.
+      throw new ApiError(
+        `Server returned an unexpected response (status ${res.status}). ` +
+        'Make sure the backend is running the latest version and EXPO_PUBLIC_API_URL is correct.',
+        res.status
+      );
+    }
+  }
 
   if (!res.ok) {
     throw new ApiError(data?.error || 'Something went wrong. Please try again.', res.status);

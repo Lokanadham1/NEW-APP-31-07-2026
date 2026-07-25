@@ -1,24 +1,34 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing } from '../theme/colors';
 import { useNotificationsBadge } from '../context/NotificationsContext';
+import { useAdminPhone } from '../context/AdminPhoneContext';
 
 // showAlerts: set false on the Alerts screens themselves (no point showing a
 // bell that reopens the screen you're already on) and on pre-login/onboarding
 // screens. alertsScreen: which inbox to open — admin screens pass
-// "AdminNotifications", everything else uses the customer one.
-export default function Header({ title, subtitle, onBack, right, showAlerts = true, alertsScreen = 'Notifications' }) {
+// "AdminNotifications", everything else uses the customer one; that same
+// value also decides the Call button's default visibility, since calling
+// the admin only makes sense on the customer side (override with showCall
+// if a screen ever needs to differ).
+export default function Header({
+  title, subtitle, onBack, right,
+  showAlerts = true, alertsScreen = 'Notifications',
+  showCall = alertsScreen !== 'AdminNotifications',
+}) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { unreadCount } = useNotificationsBadge();
+  const { callAdmin } = useAdminPhone();
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.left}>
         {onBack ? (
           <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn}>
-            <Text style={styles.backArrow}>‹</Text>
+            <Ionicons name="chevron-back" size={22} color={colors.primary} />
           </Pressable>
         ) : (
           <Image source={require('../../assets/logo.png')} style={styles.logo} />
@@ -30,13 +40,18 @@ export default function Header({ title, subtitle, onBack, right, showAlerts = tr
       </View>
       <View style={styles.rightCluster}>
         {right ? <View>{right}</View> : null}
+        {showCall ? (
+          <Pressable onPress={callAdmin} style={styles.iconBtn} hitSlop={10}>
+            <Ionicons name="call-outline" size={17} color={colors.primaryDark} />
+          </Pressable>
+        ) : null}
         {showAlerts ? (
           <Pressable
             onPress={() => navigation.navigate(alertsScreen)}
-            style={styles.alertsBtn}
+            style={styles.iconBtn}
             hitSlop={10}
           >
-            <Text style={styles.alertsIcon}>🔔</Text>
+            <Ionicons name="notifications-outline" size={18} color={colors.primaryDark} />
             {unreadCount > 0 ? (
               <View style={styles.alertsBadge}>
                 <Text style={styles.alertsBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -81,11 +96,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  backArrow: {
-    fontSize: 22,
-    color: colors.primary,
-    marginTop: -2,
-  },
   title: {
     fontSize: 20,
     fontWeight: '800',
@@ -101,16 +111,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  alertsBtn: {
+  iconBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  alertsIcon: {
-    fontSize: 17,
   },
   alertsBadge: {
     position: 'absolute',

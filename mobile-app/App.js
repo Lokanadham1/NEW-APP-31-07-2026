@@ -7,6 +7,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { ProductsProvider } from './src/context/ProductsContext';
 import { CartProvider } from './src/context/CartContext';
 import { NotificationsProvider } from './src/context/NotificationsContext';
+import { AdminPhoneProvider } from './src/context/AdminPhoneContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigateToNotifications } from './src/navigation/navigationRef';
 
@@ -25,12 +26,14 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <NotificationsProvider>
-          <ProductsProvider>
-            <CartProvider>
-              <StatusBar style="dark" />
-              <AppNavigator />
-            </CartProvider>
-          </ProductsProvider>
+          <AdminPhoneProvider>
+            <ProductsProvider>
+              <CartProvider>
+                <StatusBar style="dark" />
+                <AppNavigator />
+              </CartProvider>
+            </ProductsProvider>
+          </AdminPhoneProvider>
         </NotificationsProvider>
       </AuthProvider>
     </SafeAreaProvider>

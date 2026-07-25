@@ -21,6 +21,17 @@ function nextDays(count) {
   return days;
 }
 
+const CANCEL_WINDOW_MS = 6 * 3600 * 1000;
+
+function formatRemaining(ms) {
+  const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  if (minutes === 0) return `${hours} hour${hours !== 1 ? 's' : ''}`;
+  return `${hours}h ${minutes}m`;
+}
+
 export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
@@ -47,8 +58,10 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const canCancel = order && order.status === 'pending' &&
-    (Date.now() - new Date(order.createdAt).getTime()) < 6 * 3600 * 1000;
+  const cancelRemainingMs = order
+    ? CANCEL_WINDOW_MS - (Date.now() - new Date(order.createdAt).getTime())
+    : 0;
+  const canCancel = order && order.status === 'pending' && cancelRemainingMs > 0;
   const canReschedule = order && !order.rescheduleUsed && ['pending', 'approved'].includes(order.status);
   const canEditAddress = order && !order.addressEditUsed && ['pending', 'approved'].includes(order.status);
 
@@ -186,7 +199,17 @@ export default function OrderDetailScreen({ route, navigation }) {
             <PrimaryButton title="Edit delivery address" variant="outline" onPress={() => setMode('address')} />
           )}
           {canCancel && (
-            <PrimaryButton title="Cancel order" variant="outline" onPress={handleCancel} loading={busy} />
+            <>
+              <PrimaryButton title="Cancel order" variant="outline" onPress={handleCancel} loading={busy} />
+              <Text style={styles.cancelNote}>
+                You can cancel within 6 hours of placing an order. {formatRemaining(cancelRemainingMs)} left to cancel.
+              </Text>
+            </>
+          )}
+          {order.status === 'pending' && !canCancel && (
+            <Text style={styles.cancelNote}>
+              The 6-hour cancellation window has passed. Contact us if you still need to cancel this order.
+            </Text>
           )}
         </View>
       </ScrollView>
@@ -216,6 +239,7 @@ const styles = StyleSheet.create({
   line: { fontSize: 13.5, color: colors.ink, fontWeight: '600', marginBottom: 2 },
   lineMuted: { fontSize: 13, color: colors.slate, marginBottom: 2 },
   paymentLine: { fontSize: 12.5, color: colors.slate },
+  cancelNote: { fontSize: 12, color: colors.slate, textAlign: 'center', lineHeight: 16 },
   chip: {
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cream,
     borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8,

@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { useNotificationsBadge } from '../context/NotificationsContext';
+import { useAdminPhone } from '../context/AdminPhoneContext';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotificationsBadge();
+  const { adminPhone, callAdmin } = useAdminPhone();
 
   const handleLogout = async () => {
     await logout();
@@ -17,23 +20,38 @@ export default function ProfileScreen({ navigation }) {
     });
   };
 
+  const handleHelp = () => {
+    Alert.alert(
+      'Help & Support',
+      adminPhone
+        ? `Questions about an order, delivery, or billing? Call us at ${adminPhone}.`
+        : "The admin's contact number isn't configured yet.",
+      adminPhone ? [{ text: 'Call now', onPress: callAdmin }, { text: 'Close', style: 'cancel' }] : undefined
+    );
+  };
+
   const MENU_ROWS = [
-    { icon: '✏️', label: 'Edit profile', onPress: () => navigation.navigate('ProfileSetup', { isEdit: true }) },
-    { icon: '❓', label: 'Help & support', onPress: () => {} },
-    { icon: '📄', label: 'Terms & Privacy Policy', onPress: () => {} },
+    { icon: 'create-outline', label: 'Edit profile', onPress: () => navigation.navigate('ProfileSetup', { isEdit: true }) },
+    { icon: 'help-circle-outline', label: 'Help & support', onPress: handleHelp },
+    { icon: 'document-text-outline', label: 'Terms & Privacy Policy', onPress: () => {} },
   ];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.navigate('Notifications')} style={styles.alertsBtn} hitSlop={10}>
-          <Text style={styles.alertsIcon}>🔔</Text>
-          {unreadCount > 0 ? (
-            <View style={styles.alertsBadge}>
-              <Text style={styles.alertsBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-            </View>
-          ) : null}
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={callAdmin} style={styles.alertsBtn} hitSlop={10}>
+            <Ionicons name="call-outline" size={17} color={colors.primaryDark} />
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate('Notifications')} style={styles.alertsBtn} hitSlop={10}>
+            <Ionicons name="notifications-outline" size={18} color={colors.primaryDark} />
+            {unreadCount > 0 ? (
+              <View style={styles.alertsBadge}>
+                <Text style={styles.alertsBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
         <Image source={require('../../assets/logo.png')} style={styles.avatar} />
         <Text style={styles.name}>{user?.cateringName || user?.name || 'Guest'}</Text>
         <Text style={styles.phone}>{user?.mobile}</Text>
@@ -47,9 +65,9 @@ export default function ProfileScreen({ navigation }) {
       <View style={styles.menu}>
         {MENU_ROWS.map((row) => (
           <Pressable key={row.label} style={styles.menuRow} onPress={row.onPress}>
-            <Text style={styles.menuIcon}>{row.icon}</Text>
+            <Ionicons name={row.icon} size={19} color={colors.ink} style={styles.menuIcon} />
             <Text style={styles.menuLabel}>{row.label}</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.slate} />
           </Pressable>
         ))}
       </View>
@@ -71,19 +89,20 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     position: 'relative',
   },
-  alertsBtn: {
+  headerActions: {
     position: 'absolute',
     top: spacing.lg,
     right: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  alertsBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  alertsIcon: {
-    fontSize: 17,
   },
   alertsBadge: {
     position: 'absolute',
@@ -142,7 +161,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   menuIcon: {
-    fontSize: 18,
     marginRight: spacing.md,
   },
   menuLabel: {
@@ -150,10 +168,6 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     color: colors.ink,
     fontWeight: '600',
-  },
-  menuArrow: {
-    fontSize: 20,
-    color: colors.slate,
   },
   logoutBtn: {
     margin: spacing.lg,

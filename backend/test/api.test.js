@@ -226,6 +226,25 @@ test('customers list search and per-customer detail', async () => {
   assert.equal(detail.body.totalPaid, 60);
 });
 
+test('customer purchase totals exclude rejected/cancelled orders', async () => {
+  const before = await call(base, '/customers/9111111111', { token: admin.token });
+  const purchaseBefore = before.body.totalPurchase;
+
+  const placed = await call(base, '/orders', {
+    method: 'POST', token: customer1.token,
+    body: { items: [{ productId, quantity: 5 }], deliveryDate: '2026-09-12', deliveryTime: '12:00' },
+  });
+  assert.equal(placed.status, 201);
+  await call(base, `/orders/${placed.body.id}/reject`, { method: 'POST', token: admin.token });
+
+  const after = await call(base, '/customers/9111111111', { token: admin.token });
+  assert.equal(after.body.totalPurchase, purchaseBefore, 'a rejected order must not inflate totalPurchase');
+
+  const list = await call(base, '/customers', { token: admin.token });
+  const entry = list.body.find((c) => c.mobile === '9111111111');
+  assert.equal(entry.totalPurchase, purchaseBefore, 'the customer list must apply the same exclusion');
+});
+
 test('push token register/unregister', async () => {
   const reg = await call(base, '/me/push-token', {
     method: 'POST', token: customer1.token, body: { token: 'test-fcm-token', platform: 'android' },
@@ -301,6 +320,9 @@ test('admin dashboard: today\'s counts and per-product breakdown', async () => {
   const entry = res.body.products.find((p) => p.productId === productId);
   assert.ok(entry, 'the product used throughout these tests should appear in today\'s breakdown');
   assert.equal(entry.remainingQty, entry.orderedQty - entry.completedQty);
+
+  assert.ok(res.body.totalOrdersAllTime >= res.body.totalToday, 'all-time total must cover at least today');
+  assert.ok(res.body.totalRevenueAllTime > 0);
 });
 
 test('customer dashboard: lifetime summary excludes rejected/cancelled orders', async () => {

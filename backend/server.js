@@ -468,18 +468,22 @@ app.get('/orders/:id/bill', authRequired, h(async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 // "In progress" = accepted but not yet delivered/rejected/cancelled.
 const IN_PROGRESS_STATUSES = ['approved', 'preparing', 'ready', 'out_for_delivery'];
+// Orders that were never fulfilled — excluded from every money/production total.
+const NOT_BILLABLE_STATUSES = ['rejected', 'cancelled'];
+const billableOrders = (orders) => orders.filter((o) => !NOT_BILLABLE_STATUSES.includes(o.status));
 
 // Today's production summary: order counts by stage, plus per-product
 // ordered/completed/remaining quantities — scoped to orders *placed* today
 // (not orders delivered today), matching a same-day/pre-order catering
 // workflow where "today's production" means today's incoming orders.
+// Also includes all-time totals (orders placed and revenue billed since the
+// app went live), separate from the today-only figures above.
 app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
   const { rows } = await query('SELECT * FROM orders WHERE created_date=$1', [today()]);
   const orders = rows.map(mapOrder);
 
   const productStats = new Map(); // productId -> { productId, name, orderedQty, completedQty }
-  for (const o of orders) {
-    if (o.status === 'rejected' || o.status === 'cancelled') continue; // never produced
+  for (const o of billableOrders(orders)) {
     for (const item of o.items) {
       const entry = productStats.get(item.productId) ||
         { productId: item.productId, name: item.name, orderedQty: 0, completedQty: 0 };
@@ -492,12 +496,18 @@ app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
     .map((p) => ({ ...p, remainingQty: p.orderedQty - p.completedQty }))
     .sort((a, b) => b.orderedQty - a.orderedQty);
 
+  const { rows: allRows } = await query('SELECT * FROM orders');
+  const allOrders = allRows.map(mapOrder);
+  const totalRevenueAllTime = billableOrders(allOrders).reduce((s, o) => s + o.total, 0);
+
   res.json({
     totalToday: orders.length,
     pendingToday: orders.filter((o) => o.status === 'pending').length,
     acceptedToday: orders.filter((o) => IN_PROGRESS_STATUSES.includes(o.status)).length,
     completedToday: orders.filter((o) => o.status === 'completed').length,
     products,
+    totalOrdersAllTime: allOrders.length,
+    totalRevenueAllTime,
   });
 }));
 
@@ -510,7 +520,7 @@ app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
 app.get('/me/dashboard', authRequired, h(async (req, res) => {
   const { rows } = await query('SELECT * FROM orders WHERE user_id=$1', [req.user.id]);
   const allOrders = rows.map(mapOrder);
-  const orders = allOrders.filter((o) => o.status !== 'rejected' && o.status !== 'cancelled');
+  const orders = billableOrders(allOrders);
 
   const productIds = new Set();
   let totalQuantity = 0;
@@ -542,8 +552,9 @@ app.get('/customers', authRequired, adminRequired, h(async (req, res) => {
   for (const u of users) {
     const { rows: orderRows } = await query('SELECT * FROM orders WHERE user_id=$1 ORDER BY id DESC', [u.id]);
     const orders = orderRows.map(mapOrder);
-    const totalPurchase = orders.reduce((s, o) => s + o.total, 0);
-    const totalPaid = orders.reduce((s, o) => s + o.paidAmount, 0);
+    const billable = billableOrders(orders);
+    const totalPurchase = billable.reduce((s, o) => s + o.total, 0);
+    const totalPaid = billable.reduce((s, o) => s + o.paidAmount, 0);
     list.push({
       userId: u.id, customerId: u.customer_id, name: u.catering_name || u.name || '—',
       mobile: u.mobile, address: u.address,
@@ -564,8 +575,9 @@ app.get('/customers/:mobile', authRequired, adminRequired, h(async (req, res) =>
   if (!u) return res.status(404).json({ error: 'Not found' });
   const { rows: orderRows } = await query('SELECT * FROM orders WHERE user_id=$1 ORDER BY id DESC', [u.id]);
   const orders = orderRows.map(mapOrder);
-  const totalPurchase = orders.reduce((s, o) => s + o.total, 0);
-  const totalPaid = orders.reduce((s, o) => s + o.paidAmount, 0);
+  const billable = billableOrders(orders);
+  const totalPurchase = billable.reduce((s, o) => s + o.total, 0);
+  const totalPaid = billable.reduce((s, o) => s + o.paidAmount, 0);
   res.json({
     userId: u.id, customerId: u.customer_id, name: u.catering_name || u.name,
     mobile: u.mobile, address: u.address,

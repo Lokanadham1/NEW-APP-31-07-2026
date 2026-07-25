@@ -6,6 +6,7 @@ import Header from '../../components/Header';
 import PrimaryButton from '../../components/PrimaryButton';
 import { api } from '../../api/client';
 import { useNotificationsBadge } from '../../context/NotificationsContext';
+import { parseOrderId } from '../../utils/parseOrderId';
 
 export default function AdminNotificationsScreen({ route, navigation }) {
   const [notifications, setNotifications] = useState([]);
@@ -53,6 +54,17 @@ export default function AdminNotificationsScreen({ route, navigation }) {
   const markAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     try { await api.post('/notifications/read-all'); } catch { /* best-effort */ } finally { refreshBadge(); }
+  };
+
+  const openNotification = (item) => {
+    if (!item.read) markRead(item.id);
+    const orderId = parseOrderId(item.message);
+    if (orderId) {
+      navigation.navigate('AdminTabs', {
+        screen: 'AdminOrdersTab',
+        params: { screen: 'AdminOrderDetail', params: { orderId } },
+      });
+    }
   };
 
   const handleSend = async () => {
@@ -154,7 +166,7 @@ export default function AdminNotificationsScreen({ route, navigation }) {
             renderItem={({ item: n }) => (
               <Pressable
                 style={[styles.activityRow, !n.read && styles.activityRowUnread]}
-                onPress={() => !n.read && markRead(n.id)}
+                onPress={() => openNotification(n)}
               >
                 <Text style={styles.activityMessage}>{n.message}</Text>
                 <Text style={styles.activityDate}>{n.createdDate}</Text>

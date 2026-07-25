@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from '../theme/colors';
 
 const MONTH_NAMES = [
@@ -57,12 +58,12 @@ export default function DatePickerModal({ visible, value, onClose, onSelect }) {
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <View style={styles.headerRow}>
-            <Pressable onPress={goPrev} disabled={!canGoPrev} hitSlop={10}>
-              <Text style={[styles.navArrow, !canGoPrev && styles.navArrowDisabled]}>‹</Text>
+            <Pressable onPress={goPrev} disabled={!canGoPrev} hitSlop={10} style={styles.navArrow}>
+              <Ionicons name="chevron-back" size={22} color={canGoPrev ? colors.primary : colors.border} />
             </Pressable>
             <Text style={styles.monthLabel}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
-            <Pressable onPress={goNext} hitSlop={10}>
-              <Text style={styles.navArrow}>›</Text>
+            <Pressable onPress={goNext} hitSlop={10} style={styles.navArrow}>
+              <Ionicons name="chevron-forward" size={22} color={colors.primary} />
             </Pressable>
           </View>
 
@@ -131,13 +132,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   navArrow: {
-    fontSize: 26,
-    color: colors.primary,
-    fontWeight: '700',
     paddingHorizontal: spacing.sm,
-  },
-  navArrowDisabled: {
-    color: colors.border,
   },
   monthLabel: {
     fontSize: 15.5,

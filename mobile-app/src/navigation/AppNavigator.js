@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -56,24 +57,29 @@ const AdminTab = createBottomTabNavigator();
 // "AdminNotifications" are registered at the root stack level (below) so
 // they're reachable from any screen regardless of which tab/stack it's
 // nested in.
+// Ionicons "outline" names for the line-icon look; the "focused" state swaps
+// to the filled variant of the same glyph rather than changing shape.
 const TAB_ICONS = {
-  HomeTab: '🏠',
-  OrdersTab: '📦',
-  Cart: '🛒',
-  DashboardTab: '📊',
-  ProfileTab: '👤',
-  AdminDashboardTab: '📊',
-  AdminOrdersTab: '📦',
-  AdminProductsTab: '🍽️',
-  AdminCustomersTab: '👥',
+  HomeTab: 'home',
+  OrdersTab: 'receipt',
+  Cart: 'cart',
+  DashboardTab: 'stats-chart',
+  ProfileTab: 'person',
+  AdminDashboardTab: 'stats-chart',
+  AdminOrdersTab: 'receipt',
+  AdminProductsTab: 'restaurant',
+  AdminCustomersTab: 'people',
 };
 
 function TabIcon({ label, focused, badge }) {
+  const name = TAB_ICONS[label];
   return (
     <View style={styles.tabIconWrap}>
-      <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
-        {TAB_ICONS[label]}
-      </Text>
+      <Ionicons
+        name={focused ? name : `${name}-outline`}
+        size={22}
+        color={focused ? colors.primary : colors.slate}
+      />
       {badge ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
@@ -249,13 +255,6 @@ const styles = StyleSheet.create({
   tabIconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  tabIcon: {
-    fontSize: 20,
-    opacity: 0.6,
-  },
-  tabIconFocused: {
-    opacity: 1,
   },
   badge: {
     position: 'absolute',

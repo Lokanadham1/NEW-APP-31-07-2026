@@ -101,8 +101,12 @@ matching how it always worked.
 | GET | `/customers?q=` | search by id/mobile/name |
 | GET | `/customers/:mobile` | profile + orders + totals |
 
+`totalPurchase`/`totalPaid`/`pending` exclude rejected/cancelled orders (never fulfilled,
+so they shouldn't count toward what a customer bought or owes) — same rule as `/me/dashboard`.
+`orders` still lists every order regardless of status.
+
 ### Admin dashboard (auth, admin)
-| GET | `/admin/dashboard` | | today's order counts by stage + per-product ordered/completed/remaining quantities, scoped to orders placed today |
+| GET | `/admin/dashboard` | | today's order counts by stage + per-product ordered/completed/remaining quantities (scoped to orders placed today), plus `totalOrdersAllTime` and `totalRevenueAllTime` (all-time, rejected/cancelled excluded from revenue) |
 
 ### Public config
 | GET | `/config` | | `{adminPhone}` for the app's "Call Admin" button — unauthenticated, non-sensitive |

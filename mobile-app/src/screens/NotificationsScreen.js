@@ -5,6 +5,7 @@ import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import { api } from '../api/client';
 import { useNotificationsBadge } from '../context/NotificationsContext';
+import { parseOrderId } from '../utils/parseOrderId';
 
 export default function NotificationsScreen({ navigation }) {
   const [notifications, setNotifications] = useState([]);
@@ -33,6 +34,17 @@ export default function NotificationsScreen({ navigation }) {
   const markAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     try { await api.post('/notifications/read-all'); } catch { /* best-effort */ } finally { refreshBadge(); }
+  };
+
+  const openNotification = (item) => {
+    if (!item.read) markRead(item.id);
+    const orderId = parseOrderId(item.message);
+    if (orderId) {
+      navigation.navigate('MainTabs', {
+        screen: 'OrdersTab',
+        params: { screen: 'OrderDetail', params: { orderId } },
+      });
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -72,7 +84,7 @@ export default function NotificationsScreen({ navigation }) {
           renderItem={({ item }) => (
             <Pressable
               style={[styles.row, !item.read && styles.rowUnread]}
-              onPress={() => !item.read && markRead(item.id)}
+              onPress={() => openNotification(item)}
             >
               <Text style={styles.message}>{item.message}</Text>
               <Text style={styles.date}>{item.createdDate}</Text>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
@@ -72,7 +73,7 @@ export default function CheckoutScreen({ navigation }) {
             <Text style={[styles.dateFieldText, !deliveryDate && styles.dateFieldPlaceholder]}>
               {deliveryDate ? formatDate(deliveryDate) : 'Choose a delivery date'}
             </Text>
-            <Text style={styles.dateFieldIcon}>📅</Text>
+            <Ionicons name="calendar-outline" size={18} color={colors.slate} />
           </Pressable>
           <DatePickerModal
             visible={datePickerOpen}
@@ -186,9 +187,6 @@ const styles = StyleSheet.create({
   dateFieldPlaceholder: {
     color: colors.slate,
     fontWeight: '500',
-  },
-  dateFieldIcon: {
-    fontSize: 16,
   },
   chip: {
     borderWidth: 1,
