@@ -40,10 +40,9 @@ function QtyInput({ quantity, onSetQuantity }) {
 // The stepper is always visible (no separate ADD button) — tapping + from 0
 // adds the item, matching the cart screen's -/qty/+ control everywhere.
 //
-// Layout: thumb + name share a top row, the full description (no truncation)
-// flows underneath at full card width, and price + stepper share a bottom
-// row — instead of cramming everything into one vertically-centered row,
-// which broke down once descriptions ran longer than a line or two.
+// Layout: thumb sits beside a text column (name, then the full description
+// — no truncation — directly under it), and price + stepper share a bottom
+// row spanning the full card width underneath.
 export default function MenuItemCard({ item, onPress, quantity = 0, onIncrease, onDecrease, onSetQuantity }) {
   const available = item.status !== 'out_of_stock';
 
@@ -53,12 +52,13 @@ export default function MenuItemCard({ item, onPress, quantity = 0, onIncrease, 
         <View style={styles.thumb}>
           <Text style={styles.thumbEmoji}>{iconForCategory(item.category)}</Text>
         </View>
-        <Text style={styles.name}>{item.name}</Text>
+        <View style={styles.textCol}>
+          <Text style={styles.name}>{item.name}</Text>
+          {item.description ? (
+            <Text style={styles.desc}>{item.description}</Text>
+          ) : null}
+        </View>
       </View>
-
-      {item.description ? (
-        <Text style={styles.desc}>{item.description}</Text>
-      ) : null}
 
       <View style={styles.bottomRow}>
         <View style={styles.priceCol}>
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   thumb: {
     width: 48,
@@ -111,8 +111,10 @@ const styles = StyleSheet.create({
   thumbEmoji: {
     fontSize: 22,
   },
-  name: {
+  textCol: {
     flex: 1,
+  },
+  name: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.ink,
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: colors.slate,
     lineHeight: 18,
-    marginTop: spacing.sm,
+    marginTop: 3,
   },
   bottomRow: {
     flexDirection: 'row',
