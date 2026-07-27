@@ -106,7 +106,7 @@ so they shouldn't count toward what a customer bought or owes) — same rule as 
 `orders` still lists every order regardless of status.
 
 ### Admin dashboard (auth, admin)
-| GET | `/admin/dashboard?date=` | | order counts by stage + per-product ordered/completed/remaining quantities, scoped to orders placed on `date` (YYYY-MM-DD, defaults to today; invalid values fall back to today), plus `totalOrdersAllTime` and `totalRevenueAllTime` (all-time, rejected/cancelled excluded from revenue) |
+| GET | `/admin/dashboard?from=&to=` | | order counts by stage + per-product ordered/completed/remaining quantities, scoped to orders placed within `from`..`to` (YYYY-MM-DD, inclusive; legacy `?date=` sets both; defaults to today; invalid values fall back to today), plus `totalOrdersAllTime` and `totalRevenueAllTime` (all-time, rejected/cancelled excluded from revenue) |
 
 ### Public config
 | GET | `/config` | | `{adminPhone}` for the app's "Call Admin" button — unauthenticated, non-sensitive |

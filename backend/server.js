@@ -472,17 +472,23 @@ const IN_PROGRESS_STATUSES = ['approved', 'preparing', 'ready', 'out_for_deliver
 const NOT_BILLABLE_STATUSES = ['rejected', 'cancelled'];
 const billableOrders = (orders) => orders.filter((o) => !NOT_BILLABLE_STATUSES.includes(o.status));
 
-// Production summary for a single day: order counts by stage, plus
+// Production summary for a date range: order counts by stage, plus
 // per-product ordered/completed/remaining quantities — scoped to orders
-// *placed* on that day (not orders delivered that day), matching a
-// same-day/pre-order catering workflow. Defaults to today; pass ?date=
-// (YYYY-MM-DD) to view any other day's production instead.
-// Also includes all-time totals (orders placed and revenue billed since the
-// app went live), separate from the single-day figures above.
+// *placed* within the range (not orders delivered then), matching a
+// same-day/pre-order catering workflow. Pass ?from=&to= (YYYY-MM-DD,
+// inclusive) to view a range — e.g. this week or this month — or the
+// legacy ?date= for a single day. Defaults to today when nothing valid is
+// given. Also includes all-time totals (orders placed and revenue billed
+// since the app went live), separate from the range figures above.
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
-  const date = DATE_RE.test(req.query.date || '') ? req.query.date : today();
-  const { rows } = await query('SELECT * FROM orders WHERE created_date=$1', [date]);
+  const fallback = DATE_RE.test(req.query.date || '') ? req.query.date : today();
+  const from = DATE_RE.test(req.query.from || '') ? req.query.from : fallback;
+  const to = DATE_RE.test(req.query.to || '') ? req.query.to : fallback;
+  const { rows } = await query(
+    'SELECT * FROM orders WHERE created_date BETWEEN $1 AND $2',
+    [from <= to ? from : to, from <= to ? to : from]
+  );
   const orders = rows.map(mapOrder);
 
   const productStats = new Map(); // productId -> { productId, name, orderedQty, completedQty }
@@ -504,7 +510,9 @@ app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
   const totalRevenueAllTime = billableOrders(allOrders).reduce((s, o) => s + o.total, 0);
 
   res.json({
-    date,
+    date: to,
+    from,
+    to,
     totalToday: orders.length,
     pendingToday: orders.filter((o) => o.status === 'pending').length,
     acceptedToday: orders.filter((o) => IN_PROGRESS_STATUSES.includes(o.status)).length,

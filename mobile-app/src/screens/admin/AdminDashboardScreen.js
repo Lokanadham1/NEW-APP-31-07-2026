@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,29 +17,57 @@ const POLL_INTERVAL_MS = 20000;
 
 const todayIso = () => new Date().toISOString().split('T')[0];
 
+function startOfWeekIso() {
+  const d = new Date();
+  const day = d.getDay(); // 0 = Sunday
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); // back to Monday
+  return d.toISOString().split('T')[0];
+}
+
+function startOfMonthIso() {
+  const d = new Date();
+  d.setDate(1);
+  return d.toISOString().split('T')[0];
+}
+
 function formatDate(iso) {
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+const FILTERS = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This Week' },
+  { key: 'month', label: 'This Month' },
+  { key: 'custom', label: 'Custom' },
+];
+
 export default function AdminDashboardScreen({ navigation }) {
   const { logout } = useAuth();
-  const [summary, setSummary] = useState(null); // { date, totalToday, pendingToday, acceptedToday, completedToday, products }
+  const [summary, setSummary] = useState(null); // { from, to, totalToday, pendingToday, acceptedToday, completedToday, products }
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState(todayIso());
+  const [filterMode, setFilterMode] = useState('today');
+  const [customDate, setCustomDate] = useState(todayIso());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const isToday = selectedDate === todayIso();
+
+  const range = useMemo(() => {
+    if (filterMode === 'week') return { from: startOfWeekIso(), to: todayIso() };
+    if (filterMode === 'month') return { from: startOfMonthIso(), to: todayIso() };
+    if (filterMode === 'custom') return { from: customDate, to: customDate };
+    return { from: todayIso(), to: todayIso() };
+  }, [filterMode, customDate]);
+  const includesToday = range.to === todayIso();
 
   const load = useCallback(async (isRefresh) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
       const [dash, o, c] = await Promise.all([
-        api.get(`/admin/dashboard?date=${selectedDate}`), api.get('/orders'), api.get('/customers'),
+        api.get(`/admin/dashboard?from=${range.from}&to=${range.to}`), api.get('/orders'), api.get('/customers'),
       ]);
       setSummary(dash);
       setOrders(o);
@@ -50,17 +78,17 @@ export default function AdminDashboardScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate]);
+  }, [range.from, range.to]);
 
-  // Refresh on focus/date change, then keep polling quietly (no spinner)
-  // while focused — but only when viewing today, since a past day's
-  // production won't change.
+  // Refresh on focus/filter change, then keep polling quietly (no spinner)
+  // while focused — but only when the range includes today, since a fully
+  // past range's numbers won't change.
   useFocusEffect(useCallback(() => {
     load(false);
-    if (!isToday) return undefined;
+    if (!includesToday) return undefined;
     const timer = setInterval(() => load(true), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [load, isToday]));
+  }, [load, includesToday]));
 
   if (loading) {
     return (
@@ -97,58 +125,83 @@ export default function AdminDashboardScreen({ navigation }) {
       >
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>{isToday ? "Today's production" : `Production for ${formatDate(selectedDate)}`}</Text>
-          {!isToday ? (
-            <Pressable onPress={() => setSelectedDate(todayIso())}>
-              <Text style={styles.seeAll}>Back to today</Text>
+        <View style={styles.filterRow}>
+          {FILTERS.map((f) => (
+            <Pressable
+              key={f.key}
+              style={[styles.filterChip, filterMode === f.key && styles.filterChipActive]}
+              onPress={() => {
+                setFilterMode(f.key);
+                if (f.key === 'custom') setDatePickerOpen(true);
+              }}
+            >
+              {f.key === 'custom' ? (
+                <Ionicons
+                  name="calendar-outline"
+                  size={13}
+                  color={filterMode === 'custom' ? '#fff' : colors.ink}
+                  style={{ marginRight: 4 }}
+                />
+              ) : null}
+              <Text style={[styles.filterChipText, filterMode === f.key && styles.filterChipTextActive]}>
+                {f.key === 'custom' && filterMode === 'custom' ? formatDate(customDate) : f.label}
+              </Text>
             </Pressable>
-          ) : null}
+          ))}
         </View>
-
-        <Pressable style={styles.dateField} onPress={() => setDatePickerOpen(true)}>
-          <Ionicons name="calendar-outline" size={16} color={colors.slate} />
-          <Text style={styles.dateFieldText}>{formatDate(selectedDate)}</Text>
-          <Text style={styles.dateFieldChange}>Change</Text>
-        </Pressable>
         <DatePickerModal
           visible={datePickerOpen}
-          value={selectedDate}
+          value={customDate}
           onClose={() => setDatePickerOpen(false)}
-          onSelect={setSelectedDate}
+          onSelect={setCustomDate}
           disablePastAndToday={false}
           disableFuture
         />
 
+        <Text style={styles.sectionTitle}>
+          {filterMode === 'today' && "Today's production"}
+          {filterMode === 'week' && "This week's production"}
+          {filterMode === 'month' && "This month's production"}
+          {filterMode === 'custom' && `Production for ${formatDate(customDate)}`}
+        </Text>
         <View style={styles.statGrid}>
-          <StatCard label="Total orders today" value={summary?.totalToday ?? 0} onPress={goToOrders('all')} />
+          <StatCard size="compact" label="Total orders" value={summary?.totalToday ?? 0} onPress={goToOrders('all')} />
           <StatCard
+            size="compact"
             label="Pending"
             value={summary?.pendingToday ?? 0}
             highlight={(summary?.pendingToday ?? 0) > 0}
             onPress={goToOrders('pending')}
           />
-          <StatCard label="Accepted" value={summary?.acceptedToday ?? 0} onPress={goToOrders('approved')} />
-          <StatCard label="Completed" value={summary?.completedToday ?? 0} onPress={goToOrders('completed')} />
-        </View>
-
-        <View style={styles.statGrid}>
-          <StatCard label="Customers" value={customers.length} onPress={() => navigation.navigate('AdminCustomersTab')} />
-          <StatCard label="Outstanding" value={`₹${totalPending}`} highlight={totalPending > 0} onPress={() => navigation.navigate('AdminCustomersTab')} />
+          <StatCard size="compact" label="Accepted" value={summary?.acceptedToday ?? 0} onPress={goToOrders('approved')} />
+          <StatCard size="compact" label="Completed" value={summary?.completedToday ?? 0} onPress={goToOrders('completed')} />
+          <StatCard size="compact" label="Customers" value={customers.length} onPress={() => navigation.navigate('AdminCustomersTab')} />
+          <StatCard
+            size="compact"
+            label="Outstanding"
+            value={`₹${totalPending}`}
+            highlight={totalPending > 0}
+            onPress={() => navigation.navigate('AdminCustomersTab')}
+          />
         </View>
 
         <Text style={styles.sectionTitle}>All-time</Text>
         <View style={styles.statGrid}>
-          <StatCard label="Total orders (all-time)" value={summary?.totalOrdersAllTime ?? 0} onPress={goToOrders('all')} />
-          <StatCard label="Total revenue (all-time)" value={`₹${summary?.totalRevenueAllTime ?? 0}`} />
+          <StatCard size="compact" label="Total orders" value={summary?.totalOrdersAllTime ?? 0} onPress={goToOrders('all')} />
+          <StatCard size="compact" label="Total revenue" value={`₹${summary?.totalRevenueAllTime ?? 0}`} />
         </View>
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>{isToday ? "Today's items" : 'Items for that day'}</Text>
+          <Text style={styles.sectionTitle}>
+            {filterMode === 'today' && "Today's items"}
+            {filterMode === 'week' && "This week's items"}
+            {filterMode === 'month' && "This month's items"}
+            {filterMode === 'custom' && 'Items for that day'}
+          </Text>
         </View>
         {products.length === 0 ? (
           <Text style={[styles.muted, { marginBottom: spacing.lg }]}>
-            {isToday ? 'No orders placed today yet.' : 'No orders were placed on that day.'}
+            No orders were placed in this period.
           </Text>
         ) : (
           <View style={[styles.card, { marginBottom: spacing.lg }]}>
@@ -221,14 +274,18 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.ink, marginBottom: spacing.sm },
   seeAll: { fontSize: 13, fontWeight: '700', color: colors.primary },
   muted: { color: colors.slate, fontSize: 13.5 },
-  dateField: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: 10,
-    marginBottom: spacing.md, alignSelf: 'flex-start',
+  filterRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs,
+    marginBottom: spacing.md,
   },
-  dateFieldText: { fontSize: 13, fontWeight: '700', color: colors.ink },
-  dateFieldChange: { fontSize: 12, fontWeight: '700', color: colors.primary, marginLeft: spacing.xs },
+  filterChip: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.pill, paddingHorizontal: spacing.md, paddingVertical: 8,
+  },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChipText: { fontSize: 12.5, fontWeight: '700', color: colors.ink },
+  filterChipTextActive: { color: '#fff' },
   orderRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,

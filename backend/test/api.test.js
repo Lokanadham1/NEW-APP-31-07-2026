@@ -338,6 +338,19 @@ test('admin dashboard: ?date= filters production to that day, invalid dates fall
   assert.equal(junk.body.date, todayIso, 'an invalid date must fall back to today rather than erroring');
 });
 
+test('admin dashboard: ?from=&to= sums a range (e.g. this week/month)', async () => {
+  const todayIso = new Date().toISOString().split('T')[0];
+
+  const range = await call(base, '/admin/dashboard?from=2020-01-01&to=2020-01-31', { token: admin.token });
+  assert.equal(range.status, 200);
+  assert.equal(range.body.from, '2020-01-01');
+  assert.equal(range.body.to, '2020-01-31');
+  assert.equal(range.body.totalToday, 0, 'no orders exist in this arbitrary past range');
+
+  const wide = await call(base, `/admin/dashboard?from=2020-01-01&to=${todayIso}`, { token: admin.token });
+  assert.ok(wide.body.totalToday >= 1, 'a range spanning today must include today\'s orders');
+});
+
 test('customer dashboard: lifetime summary excludes rejected/cancelled orders', async () => {
   const before = await call(base, '/me/dashboard', { token: customer1.token });
   assert.equal(before.status, 200);

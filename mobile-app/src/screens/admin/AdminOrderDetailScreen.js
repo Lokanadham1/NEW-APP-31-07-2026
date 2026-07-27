@@ -235,7 +235,24 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
             <PrimaryButton title="Reschedule delivery" variant="outline" onPress={() => setMode('reschedule')} />
           )}
           {balance > 0 && mode !== 'payment' && (
-            <PrimaryButton title="Record payment" variant="outline" onPress={() => setMode('payment')} />
+            <>
+              <PrimaryButton title="Record payment" variant="outline" onPress={() => setMode('payment')} />
+              <PrimaryButton
+                title={`Mark as fully paid (₹${balance})`}
+                loading={busy}
+                onPress={() => Alert.alert(
+                  'Mark as fully paid?',
+                  `This records a ₹${balance} payment to clear the remaining balance.`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Confirm',
+                      onPress: () => run(() => api.post(`/orders/${orderId}/payments`, { amount: balance, mode: 'Cash' })),
+                    },
+                  ]
+                )}
+              />
+            </>
           )}
         </View>
       </ScrollView>
