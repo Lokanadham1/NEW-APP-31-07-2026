@@ -23,6 +23,7 @@ import OrderDetailScreen from '../screens/OrderDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import CustomerDashboardScreen from '../screens/CustomerDashboardScreen';
+import TermsPrivacyScreen from '../screens/TermsPrivacyScreen';
 
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
@@ -263,6 +264,7 @@ export default function AppNavigator() {
         <RootStack.Screen name="AdminTabs" component={AdminTabs} />
         <RootStack.Screen name="Notifications" component={NotificationsScreen} />
         <RootStack.Screen name="AdminNotifications" component={AdminNotificationsScreen} />
+        <RootStack.Screen name="TermsPrivacy" component={TermsPrivacyScreen} />
       </RootStack.Navigator>
     </NavigationContainer>
   );

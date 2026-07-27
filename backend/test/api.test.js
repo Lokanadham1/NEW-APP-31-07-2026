@@ -338,6 +338,43 @@ test('admin dashboard: ?date= filters production to that day, invalid dates fall
   assert.equal(junk.body.date, todayIso, 'an invalid date must fall back to today rather than erroring');
 });
 
+test('admin dashboard: unfinished orders from earlier days carry into today\'s product breakdown', async () => {
+  const { Pool } = require('pg');
+  const connStr = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+  const pool = new Pool({
+    connectionString: connStr,
+    ssl: /localhost|127\.0\.0\.1/.test(connStr || '') ? false : { rejectUnauthorized: false },
+  });
+  try {
+    // Place a fresh order, then backdate it as if placed on an arbitrary
+    // past day and never finished — its quantity should still show up as
+    // unfinished in today's breakdown instead of vanishing once that day
+    // is no longer in the selected range.
+    const placed = await call(base, '/orders', {
+      method: 'POST', token: customer1.token,
+      body: { items: [{ productId, quantity: 3 }], deliveryDate: '2026-09-12', deliveryTime: '12:00' },
+    });
+    assert.equal(placed.status, 201);
+    // A year with no other test fixture dates in it, so this doesn't bleed
+    // into the ?from=&to= range test below (which uses 2020-01-01..01-31).
+    await pool.query('UPDATE orders SET created_date = $1 WHERE id = $2', ['2019-01-01', placed.body.id]);
+
+    const res = await call(base, '/admin/dashboard', { token: admin.token });
+    assert.equal(res.status, 200);
+    const entry = res.body.products.find((p) => p.productId === productId);
+    assert.ok(entry && entry.remainingQty >= 3, 'the backdated unfinished order\'s quantity must carry into today\'s breakdown');
+
+    // Once it's actually completed, it must stop carrying forward.
+    const delivered = await call(base, `/orders/${placed.body.id}/deliver`, { method: 'POST', token: admin.token });
+    assert.equal(delivered.status, 200);
+    const after = await call(base, '/admin/dashboard?date=2019-06-15', { token: admin.token });
+    const entryAfter = after.body.products.find((p) => p.productId === productId);
+    assert.ok(!entryAfter, 'a completed order must not keep carrying forward into later days');
+  } finally {
+    await pool.end();
+  }
+});
+
 test('admin dashboard: ?from=&to= sums a range (e.g. this week/month)', async () => {
   const todayIso = new Date().toISOString().split('T')[0];
 

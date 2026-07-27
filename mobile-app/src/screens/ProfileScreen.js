@@ -33,7 +33,7 @@ export default function ProfileScreen({ navigation }) {
   const MENU_ROWS = [
     { icon: 'create-outline', label: 'Edit profile', onPress: () => navigation.navigate('ProfileSetup', { isEdit: true }) },
     { icon: 'help-circle-outline', label: 'Help & support', onPress: handleHelp },
-    { icon: 'document-text-outline', label: 'Terms & Privacy Policy', onPress: () => {} },
+    { icon: 'document-text-outline', label: 'Terms & Privacy Policy', onPress: () => navigation.navigate('TermsPrivacy') },
   ];
 
   return (

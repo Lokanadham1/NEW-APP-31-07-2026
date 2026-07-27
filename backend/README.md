@@ -108,6 +108,12 @@ so they shouldn't count toward what a customer bought or owes) — same rule as 
 ### Admin dashboard (auth, admin)
 | GET | `/admin/dashboard?from=&to=` | | order counts by stage + per-product ordered/completed/remaining quantities, scoped to orders placed within `from`..`to` (YYYY-MM-DD, inclusive; legacy `?date=` sets both; defaults to today; invalid values fall back to today), plus `totalOrdersAllTime` and `totalRevenueAllTime` (all-time, rejected/cancelled excluded from revenue) |
 
+The order-count fields (`totalToday`/`pendingToday`/etc.) only reflect orders placed within
+`from`..`to`. The `products` breakdown is wider: it also folds in any still-open order placed
+*before* `from` (not completed/rejected/cancelled), so an unfinished item's remaining quantity
+keeps showing up as production owed every day until it's actually completed, instead of
+disappearing once the day it was placed falls outside the selected range.
+
 ### Public config
 | GET | `/config` | | `{adminPhone}` for the app's "Call Admin" button — unauthenticated, non-sensitive |
 

@@ -485,14 +485,28 @@ app.get('/admin/dashboard', authRequired, adminRequired, h(async (req, res) => {
   const fallback = DATE_RE.test(req.query.date || '') ? req.query.date : today();
   const from = DATE_RE.test(req.query.from || '') ? req.query.from : fallback;
   const to = DATE_RE.test(req.query.to || '') ? req.query.to : fallback;
+  const rangeFrom = from <= to ? from : to;
+  const rangeTo = from <= to ? to : from;
   const { rows } = await query(
     'SELECT * FROM orders WHERE created_date BETWEEN $1 AND $2',
-    [from <= to ? from : to, from <= to ? to : from]
+    [rangeFrom, rangeTo]
   );
   const orders = rows.map(mapOrder);
 
+  // Backlog: still-open orders placed *before* this range. Without this, an
+  // order that wasn't finished on the day it was placed simply disappears
+  // from the product breakdown once that day is no longer in view — the
+  // kitchen loses track of it. Folding it in here makes its remaining
+  // quantity keep showing (and keep counting toward "left") every day until
+  // it's actually completed (or rejected/cancelled).
+  const { rows: backlogRows } = await query(
+    `SELECT * FROM orders WHERE created_date < $1 AND status NOT IN ('completed', 'rejected', 'cancelled')`,
+    [rangeFrom]
+  );
+  const backlogOrders = backlogRows.map(mapOrder);
+
   const productStats = new Map(); // productId -> { productId, name, orderedQty, completedQty }
-  for (const o of billableOrders(orders)) {
+  for (const o of billableOrders([...orders, ...backlogOrders])) {
     for (const item of o.items) {
       const entry = productStats.get(item.productId) ||
         { productId: item.productId, name: item.name, orderedQty: 0, completedQty: 0 };
