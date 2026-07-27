@@ -158,7 +158,6 @@ export default function AdminDashboardScreen({ navigation }) {
               </Pressable>
             );
           })}
-          ))}
         </View>
         <DatePickerModal
           visible={datePickerOpen}
