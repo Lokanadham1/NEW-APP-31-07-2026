@@ -245,47 +245,6 @@ test('customer purchase totals exclude rejected/cancelled orders', async () => {
   assert.equal(entry.totalPurchase, purchaseBefore, 'the customer list must apply the same exclusion');
 });
 
-test('admin staff: add, list, validate, and remove admin/delivery accounts', async () => {
-  const nonAdmin = await call(base, '/admin/staff', { token: customer1.token });
-  assert.equal(nonAdmin.status, 403);
-
-  const badMobile = await call(base, '/admin/staff', {
-    method: 'POST', token: admin.token, body: { mobile: '123', role: 'delivery' },
-  });
-  assert.equal(badMobile.status, 400);
-
-  const badRole = await call(base, '/admin/staff', {
-    method: 'POST', token: admin.token, body: { mobile: '9155500001', role: 'user' },
-  });
-  assert.equal(badRole.status, 400);
-
-  // Refuses to silently repurpose an existing customer account.
-  const conflict = await call(base, '/admin/staff', {
-    method: 'POST', token: admin.token, body: { mobile: '9111111111', role: 'delivery' },
-  });
-  assert.equal(conflict.status, 409);
-
-  const added = await call(base, '/admin/staff', {
-    method: 'POST', token: admin.token,
-    body: { mobile: '9155500001', role: 'delivery', name: 'Test Delivery' },
-  });
-  assert.equal(added.status, 201);
-  assert.equal(added.body.role, 'delivery');
-
-  const list = await call(base, '/admin/staff', { token: admin.token });
-  assert.equal(list.status, 200);
-  assert.ok(list.body.some((s) => s.mobile === '9155500001' && s.role === 'delivery'));
-
-  const selfRemove = await call(base, `/admin/staff/${admin.user.id}`, { method: 'DELETE', token: admin.token });
-  assert.equal(selfRemove.status, 400, "an admin can't remove their own access");
-
-  const removed = await call(base, `/admin/staff/${added.body.id}`, { method: 'DELETE', token: admin.token });
-  assert.equal(removed.status, 200);
-
-  const listAfter = await call(base, '/admin/staff', { token: admin.token });
-  assert.ok(!listAfter.body.some((s) => s.mobile === '9155500001'), 'removed staff must no longer be listed');
-});
-
 test('push token register/unregister', async () => {
   const reg = await call(base, '/me/push-token', {
     method: 'POST', token: customer1.token, body: { token: 'test-fcm-token', platform: 'android' },

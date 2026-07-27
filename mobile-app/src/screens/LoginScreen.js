@@ -49,8 +49,6 @@ export default function LoginScreen({ navigation }) {
       const user = await verifyOtp(phone, code);
       if (user.role === 'admin') {
         navigation.replace('AdminTabs');
-      } else if (user.role === 'delivery') {
-        navigation.replace('DeliveryHome');
       } else {
         navigation.replace(user.profileDone ? 'MainTabs' : 'ProfileSetup');
       }

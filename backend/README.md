@@ -108,19 +108,6 @@ so they shouldn't count toward what a customer bought or owes) — same rule as 
 ### Admin dashboard (auth, admin)
 | GET | `/admin/dashboard?from=&to=` | | order counts by stage + per-product ordered/completed/remaining quantities, scoped to orders placed within `from`..`to` (YYYY-MM-DD, inclusive; legacy `?date=` sets both; defaults to today; invalid values fall back to today), plus `totalOrdersAllTime` and `totalRevenueAllTime` (all-time, rejected/cancelled excluded from revenue) |
 
-### Staff (admin)
-| Method | Path | Body | Notes |
-|---|---|---|---|
-| GET | `/admin/staff` | | lists users with role `admin` or `delivery` |
-| POST | `/admin/staff` | `{mobile, role, name?}` | `role` is `admin` or `delivery`; creates the account or promotes an existing non-customer one. 409 if the number already belongs to a customer account |
-| DELETE | `/admin/staff/:id` | | demotes back to `role='user'` (assigns a `customer_id` if it never had one) rather than deleting the row. Refuses to remove your own access or the last remaining admin |
-
-Roles beyond `user` are now primarily managed here rather than via `ADMIN_MOBILES` —
-that env var only bootstraps the very first admin (promotes a brand-new or plain
-`user` account on login; never demotes an existing admin/delivery account).
-`delivery` is recorded for a future delivery-staff app experience; there's no
-delivery-specific functionality yet — a delivery-role login sees a placeholder screen.
-
 ### Public config
 | GET | `/config` | | `{adminPhone}` for the app's "Call Admin" button — unauthenticated, non-sensitive |
 

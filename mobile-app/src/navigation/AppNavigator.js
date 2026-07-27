@@ -11,7 +11,6 @@ import { useCart } from '../context/CartContext';
 
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
-import DeliveryHomeScreen from '../screens/DeliveryHomeScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MenuScreen from '../screens/MenuScreen';
@@ -32,7 +31,6 @@ import AdminProductsScreen from '../screens/admin/AdminProductsScreen';
 import AdminProductFormScreen from '../screens/admin/AdminProductFormScreen';
 import AdminCustomersScreen from '../screens/admin/AdminCustomersScreen';
 import AdminCustomerDetailScreen from '../screens/admin/AdminCustomerDetailScreen';
-import AdminStaffScreen from '../screens/admin/AdminStaffScreen';
 import AdminNotificationsScreen from '../screens/admin/AdminNotificationsScreen';
 
 const RootStack = createNativeStackNavigator();
@@ -44,7 +42,6 @@ const Tab = createBottomTabNavigator();
 const AdminOrdersStackNav = createNativeStackNavigator();
 const AdminProductsStackNav = createNativeStackNavigator();
 const AdminCustomersStackNav = createNativeStackNavigator();
-const AdminStaffStackNav = createNativeStackNavigator();
 const AdminTab = createBottomTabNavigator();
 
 // Tab-level route names are deliberately distinct from the first screen name
@@ -72,7 +69,6 @@ const TAB_ICONS = {
   AdminOrdersTab: 'receipt',
   AdminProductsTab: 'restaurant',
   AdminCustomersTab: 'people',
-  AdminStaffTab: 'id-card',
 };
 
 function TabIcon({ label, focused, badge }) {
@@ -208,14 +204,6 @@ function AdminCustomersStack() {
   );
 }
 
-function AdminStaffStack() {
-  return (
-    <AdminStaffStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <AdminStaffStackNav.Screen name="AdminStaff" component={AdminStaffScreen} />
-    </AdminStaffStackNav.Navigator>
-  );
-}
-
 function AdminTabs() {
   return (
     <AdminTab.Navigator
@@ -260,14 +248,6 @@ function AdminTabs() {
           tabPress: () => navigation.navigate('AdminCustomersTab', { screen: 'AdminCustomers' }),
         })}
       />
-      <AdminTab.Screen
-        name="AdminStaffTab"
-        component={AdminStaffStack}
-        options={{ tabBarLabel: 'Staff' }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate('AdminStaffTab', { screen: 'AdminStaff' }),
-        })}
-      />
     </AdminTab.Navigator>
   );
 }
@@ -279,7 +259,6 @@ export default function AppNavigator() {
         <RootStack.Screen name="Splash" component={SplashScreen} />
         <RootStack.Screen name="Login" component={LoginScreen} />
         <RootStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
-        <RootStack.Screen name="DeliveryHome" component={DeliveryHomeScreen} />
         <RootStack.Screen name="MainTabs" component={MainTabs} />
         <RootStack.Screen name="AdminTabs" component={AdminTabs} />
         <RootStack.Screen name="Notifications" component={NotificationsScreen} />

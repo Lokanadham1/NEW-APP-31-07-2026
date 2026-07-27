@@ -82,29 +82,23 @@ async function verifyOtp(mobile, code) {
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────
-// Roles beyond 'user' are primarily assigned via the in-app Staff screen
-// (POST /admin/staff), stored on the user row. ADMIN_MOBILES only bootstraps
-// the very first admin(s) — it promotes a brand-new or plain 'user' account
-// on their first login, but never demotes an existing admin/delivery account
-// just because it's absent from the env list (that would fight with staff
-// added/removed through the app).
 async function findOrCreateUser(mobile) {
   let { rows } = await query('SELECT * FROM users WHERE mobile = $1', [mobile]);
   let u = rows[0];
+  const role = adminSet.has(mobile) ? 'admin' : 'user';
   const now = new Date().toISOString();
   if (!u) {
-    const role = adminSet.has(mobile) ? 'admin' : 'user';
-    const customerId = role === 'user' ? await nextCustomerId() : null;
+    const customerId = role === 'admin' ? null : await nextCustomerId();
     const ins = await query(
       `INSERT INTO users (mobile, customer_id, role, profile_done, created_at)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [mobile, customerId, role, role !== 'user', now]
+      [mobile, customerId, role, role === 'admin', now]
     );
     u = ins.rows[0];
-  } else if (u.role === 'user' && adminSet.has(mobile)) {
-    await query('UPDATE users SET role = $1, profile_done = true WHERE id = $2', ['admin', u.id]);
-    u.role = 'admin';
-    u.profile_done = true;
+  } else if (u.role !== role) {
+    // keep role in sync if the allowlist changed
+    await query('UPDATE users SET role = $1 WHERE id = $2', [role, u.id]);
+    u.role = role;
   }
   return u;
 }
@@ -140,6 +134,6 @@ function adminRequired(req, res, next) {
 }
 
 module.exports = {
-  sendOtp, verifyOtp, findOrCreateUser, issueToken, nextCustomerId,
+  sendOtp, verifyOtp, findOrCreateUser, issueToken,
   authRequired, adminRequired, isValidMobile, adminSet,
 };
