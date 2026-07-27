@@ -185,13 +185,18 @@ export default function AdminDashboardScreen({ navigation }) {
           />
           <StatCard size="compact" label="Accepted" value={summary?.acceptedToday ?? 0} onPress={goToOrders('approved')} />
           <StatCard size="compact" label="Completed" value={summary?.completedToday ?? 0} onPress={goToOrders('completed')} />
-          <StatCard size="compact" label="Customers" value={customers.length} onPress={() => navigation.navigate('AdminCustomersTab')} />
+          <StatCard
+            size="compact"
+            label="Customers"
+            value={customers.length}
+            onPress={() => navigation.navigate('AdminCustomersTab', { screen: 'AdminCustomers', params: { pendingOnly: undefined } })}
+          />
           <StatCard
             size="compact"
             label="Outstanding"
             value={`₹${totalPending}`}
             highlight={totalPending > 0}
-            onPress={() => navigation.navigate('AdminCustomersTab')}
+            onPress={() => navigation.navigate('AdminCustomersTab', { screen: 'AdminCustomers', params: { pendingOnly: true } })}
           />
         </View>
 

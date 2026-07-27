@@ -5,7 +5,8 @@ import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
 import { api } from '../../api/client';
 
-export default function AdminCustomersScreen({ navigation }) {
+export default function AdminCustomersScreen({ route, navigation }) {
+  const pendingOnly = !!route.params?.pendingOnly;
   const [customers, setCustomers] = useState([]);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
@@ -25,9 +26,17 @@ export default function AdminCustomersScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => { load(q); }, []));
 
+  const shown = pendingOnly ? customers.filter((c) => c.pending > 0) : customers;
+
   return (
     <View style={styles.screen}>
-      <Header title="Customers" subtitle={`${customers.length} customer${customers.length !== 1 ? 's' : ''}`} alertsScreen="AdminNotifications" />
+      <Header
+        title="Customers"
+        subtitle={pendingOnly
+          ? `${shown.length} with a balance due`
+          : `${customers.length} customer${customers.length !== 1 ? 's' : ''}`}
+        alertsScreen="AdminNotifications"
+      />
 
       <View style={styles.searchWrap}>
         <TextInput
@@ -41,15 +50,23 @@ export default function AdminCustomersScreen({ navigation }) {
         />
       </View>
 
+      {pendingOnly ? (
+        <Pressable onPress={() => navigation.setParams({ pendingOnly: undefined })} style={styles.showAllWrap}>
+          <Text style={styles.showAll}>Showing only customers with dues · Show all</Text>
+        </Pressable>
+      ) : null}
+
       {loading ? (
         <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
       ) : error ? (
         <View style={styles.centered}><Text style={styles.errorText}>{error}</Text></View>
-      ) : customers.length === 0 ? (
-        <View style={styles.centered}><Text style={styles.muted}>No customers found.</Text></View>
+      ) : shown.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.muted}>{pendingOnly ? 'No customers with a balance due.' : 'No customers found.'}</Text>
+        </View>
       ) : (
         <FlatList
-          data={customers}
+          data={shown}
           keyExtractor={(c) => String(c.userId)}
           contentContainerStyle={styles.list}
           renderItem={({ item: c }) => (
@@ -76,6 +93,8 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 14 },
   muted: { color: colors.slate, fontSize: 13.5 },
   searchWrap: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  showAllWrap: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  showAll: { fontSize: 12.5, fontWeight: '700', color: colors.primary },
   search: {
     backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 14, color: colors.ink,

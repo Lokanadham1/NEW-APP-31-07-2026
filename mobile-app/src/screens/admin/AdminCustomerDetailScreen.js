@@ -87,7 +87,7 @@ export default function AdminCustomerDetailScreen({ route, navigation }) {
           renderItem={({ item: o }) => (
             <Pressable
               style={styles.orderRow}
-              onPress={() => navigation.navigate('AdminOrdersTab', { screen: 'AdminOrderDetail', params: { orderId: o.id } })}
+              onPress={() => navigation.navigate('AdminCustomerOrderDetail', { orderId: o.id })}
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.orderId}>#{o.id}</Text>

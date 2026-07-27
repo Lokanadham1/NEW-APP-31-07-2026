@@ -201,6 +201,12 @@ function AdminCustomersStack() {
     <AdminCustomersStackNav.Navigator screenOptions={{ headerShown: false }}>
       <AdminCustomersStackNav.Screen name="AdminCustomers" component={AdminCustomersScreen} />
       <AdminCustomersStackNav.Screen name="AdminCustomerDetail" component={AdminCustomerDetailScreen} />
+      {/* Same screen as AdminOrdersTab's AdminOrderDetail, registered again
+          here under its own name so an order opened from a customer's
+          profile pushes onto *this* stack instead of switching to the
+          Orders tab — otherwise the back button would land on the Orders
+          list instead of returning to the customer. */}
+      <AdminCustomersStackNav.Screen name="AdminCustomerOrderDetail" component={AdminOrderDetailScreen} />
     </AdminCustomersStackNav.Navigator>
   );
 }
@@ -246,7 +252,7 @@ function AdminTabs() {
         component={AdminCustomersStack}
         options={{ tabBarLabel: 'Customers' }}
         listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate('AdminCustomersTab', { screen: 'AdminCustomers' }),
+          tabPress: () => navigation.navigate('AdminCustomersTab', { screen: 'AdminCustomers', params: { pendingOnly: undefined } }),
         })}
       />
     </AdminTab.Navigator>
