@@ -114,6 +114,9 @@ export default function OrderDetailScreen({ route, navigation }) {
   }
 
   const balance = Math.max(0, order.total - order.paidAmount);
+  // Rejected/cancelled orders were never fulfilled — nothing was owed or
+  // collected, matching the same exclusion used for billing totals elsewhere.
+  const notBillable = order.status === 'rejected' || order.status === 'cancelled';
 
   return (
     <View style={styles.screen}>
@@ -145,20 +148,22 @@ export default function OrderDetailScreen({ route, navigation }) {
           {order.remarks ? <Text style={styles.lineMuted}>Note: {order.remarks}</Text> : null}
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Payment</Text>
-          <Text style={styles.line}>Paid: ₹{order.paidAmount} of ₹{order.total}</Text>
-          {balance > 0 ? <Text style={styles.lineMuted}>Balance due: ₹{balance}</Text> : (
-            <Text style={[styles.lineMuted, { color: colors.primary, fontWeight: '700' }]}>Fully paid</Text>
-          )}
-          {order.payments.length > 0 ? (
-            <View style={{ marginTop: spacing.sm }}>
-              {order.payments.map((p, idx) => (
-                <Text key={idx} style={styles.paymentLine}>₹{p.amount} · {p.mode} · {p.date}</Text>
-              ))}
-            </View>
-          ) : null}
-        </View>
+        {!notBillable && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Payment</Text>
+            <Text style={styles.line}>Paid: ₹{order.paidAmount} of ₹{order.total}</Text>
+            {balance > 0 ? <Text style={styles.lineMuted}>Balance due: ₹{balance}</Text> : (
+              <Text style={[styles.lineMuted, { color: colors.primary, fontWeight: '700' }]}>Fully paid</Text>
+            )}
+            {order.payments.length > 0 ? (
+              <View style={{ marginTop: spacing.sm }}>
+                {order.payments.map((p, idx) => (
+                  <Text key={idx} style={styles.paymentLine}>₹{p.amount} · {p.mode} · {p.date}</Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        )}
 
         {mode === 'reschedule' && (
           <View style={styles.card}>

@@ -12,6 +12,8 @@ export default function SplashScreen({ navigation }) {
       navigation.replace('Login');
     } else if (user?.role === 'admin') {
       navigation.replace('AdminTabs');
+    } else if (user?.role === 'delivery') {
+      navigation.replace('DeliveryHome');
     } else if (!user?.profileDone) {
       navigation.replace('ProfileSetup');
     } else {

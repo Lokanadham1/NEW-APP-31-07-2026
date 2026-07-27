@@ -4,6 +4,7 @@ import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
 import PrimaryButton from '../../components/PrimaryButton';
 import StatusPill from '../../components/StatusPill';
+import StatCard from '../../components/StatCard';
 import { api } from '../../api/client';
 
 export default function AdminCustomerDetailScreen({ route, navigation }) {
@@ -11,6 +12,7 @@ export default function AdminCustomerDetailScreen({ route, navigation }) {
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -55,14 +57,31 @@ export default function AdminCustomerDetailScreen({ route, navigation }) {
         />
 
         <View style={styles.statGrid}>
-          <StatCard label="Purchased" value={`₹${customer.totalPurchase}`} />
-          <StatCard label="Paid" value={`₹${customer.totalPaid}`} />
-          <StatCard label="Pending" value={`₹${customer.pending}`} highlight={customer.pending > 0} />
+          <StatCard size="compact" label="Purchased" value={`₹${customer.totalPurchase}`} />
+          <StatCard size="compact" label="Paid" value={`₹${customer.totalPaid}`} />
+          <StatCard
+            size="compact"
+            label="Pending"
+            value={`₹${customer.pending}`}
+            highlight={customer.pending > 0}
+            onPress={customer.pending > 0 ? () => setShowPendingOnly((v) => !v) : undefined}
+            active={showPendingOnly}
+          />
         </View>
 
-        <Text style={styles.sectionTitle}>Orders</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>{showPendingOnly ? 'Orders with balance due' : 'Orders'}</Text>
+          {showPendingOnly ? (
+            <Pressable onPress={() => setShowPendingOnly(false)}>
+              <Text style={styles.showAll}>Show all</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <FlatList
-          data={customer.orders}
+          data={showPendingOnly
+            ? customer.orders.filter((o) =>
+                o.status !== 'rejected' && o.status !== 'cancelled' && o.total - o.paidAmount > 0)
+            : customer.orders}
           keyExtractor={(o) => String(o.id)}
           scrollEnabled={false}
           renderItem={({ item: o }) => (
@@ -78,18 +97,13 @@ export default function AdminCustomerDetailScreen({ route, navigation }) {
               <StatusPill status={o.status} />
             </Pressable>
           )}
-          ListEmptyComponent={<Text style={styles.muted}>No orders yet.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.muted}>
+              {showPendingOnly ? 'No orders with a balance due.' : 'No orders yet.'}
+            </Text>
+          }
         />
       </ScrollView>
-    </View>
-  );
-}
-
-function StatCard({ label, value, highlight }) {
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={[styles.statValue, highlight && { color: colors.danger }]}>{value}</Text>
     </View>
   );
 }
@@ -100,14 +114,13 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 14 },
   muted: { color: colors.slate, fontSize: 12.5 },
   address: { fontSize: 13.5, color: colors.slate },
-  statGrid: { flexDirection: 'row', gap: spacing.sm },
-  statCard: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md,
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.ink },
+  sectionHeaderRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: spacing.lg, marginBottom: spacing.sm,
   },
-  statLabel: { fontSize: 11.5, color: colors.slate },
-  statValue: { fontSize: 17, fontWeight: '800', color: colors.ink, marginTop: 2 },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.ink, marginTop: spacing.lg, marginBottom: spacing.sm },
+  showAll: { fontSize: 13, fontWeight: '700', color: colors.primary },
   orderRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,

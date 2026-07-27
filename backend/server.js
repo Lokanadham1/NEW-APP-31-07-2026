@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { query, initSchema, mapProduct, mapOrder, mapUser, mapNotif } = require('./db');
 const {
-  sendOtp, verifyOtp, findOrCreateUser, issueToken,
+  sendOtp, verifyOtp, findOrCreateUser, issueToken, nextCustomerId,
   authRequired, adminRequired, isValidMobile,
 } = require('./auth');
 
@@ -595,6 +595,80 @@ app.get('/customers/:mobile', authRequired, adminRequired, h(async (req, res) =>
     mobile: u.mobile, address: u.address,
     totalPurchase, totalPaid, pending: totalPurchase - totalPaid, orders,
   });
+}));
+
+// ══════════════════════════════════════════════════════════════════════════
+// STAFF (admin) — other admin accounts and delivery staff
+// ══════════════════════════════════════════════════════════════════════════
+// Note: 'delivery' is recorded here so an owner can start building out a
+// staff directory, but there's no delivery-specific app experience yet —
+// a delivery-role login currently just sees a placeholder screen.
+const STAFF_ROLES = ['admin', 'delivery'];
+
+app.get('/admin/staff', authRequired, adminRequired, h(async (req, res) => {
+  const { rows } = await query(
+    "SELECT * FROM users WHERE role = ANY($1) ORDER BY id ASC",
+    [STAFF_ROLES]
+  );
+  res.json(rows.map((u) => ({
+    id: u.id, mobile: u.mobile, role: u.role, name: u.name, createdAt: u.created_at,
+  })));
+}));
+
+app.post('/admin/staff', authRequired, adminRequired, h(async (req, res) => {
+  const { mobile, role, name } = req.body;
+  if (!isValidMobile(mobile)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number.' });
+  if (!STAFF_ROLES.includes(role)) return res.status(400).json({ error: "Role must be 'admin' or 'delivery'." });
+
+  const { rows } = await query('SELECT * FROM users WHERE mobile=$1', [mobile]);
+  const existing = rows[0];
+  const now = new Date().toISOString();
+
+  if (!existing) {
+    const ins = await query(
+      `INSERT INTO users (mobile, customer_id, role, name, profile_done, created_at)
+       VALUES ($1, NULL, $2, $3, true, $4) RETURNING *`,
+      [mobile, role, name || null, now]
+    );
+    return res.status(201).json(mapUser(ins.rows[0]));
+  }
+  if (existing.role === 'user' && existing.customer_id) {
+    // Promoting an existing customer to staff — flag it rather than silently
+    // repurposing an account that has real order/purchase history.
+    return res.status(409).json({
+      error: 'This number belongs to an existing customer account. Remove or reassign it before adding as staff.',
+    });
+  }
+  const upd = await query(
+    'UPDATE users SET role=$1, name=COALESCE($2, name), profile_done=true WHERE id=$3 RETURNING *',
+    [role, name || null, existing.id]
+  );
+  res.json(mapUser(upd.rows[0]));
+}));
+
+app.delete('/admin/staff/:id', authRequired, adminRequired, h(async (req, res) => {
+  const id = Number(req.params.id);
+  if (id === req.user.id) return res.status(400).json({ error: "You can't remove your own access." });
+
+  const { rows } = await query('SELECT * FROM users WHERE id=$1', [id]);
+  const u = rows[0];
+  if (!u || !STAFF_ROLES.includes(u.role)) return res.status(404).json({ error: 'Staff member not found.' });
+
+  if (u.role === 'admin') {
+    const { rows: admins } = await query("SELECT COUNT(*) FROM users WHERE role='admin'");
+    if (Number(admins[0].count) <= 1) {
+      return res.status(400).json({ error: "Can't remove the last remaining admin." });
+    }
+  }
+
+  // Demote rather than delete — the account (and any order history, if it
+  // somehow has any) stays intact, just back to an ordinary customer.
+  const customerId = u.customer_id || await nextCustomerId();
+  await query(
+    "UPDATE users SET role='user', customer_id=$1, profile_done=false WHERE id=$2",
+    [customerId, id]
+  );
+  res.json({ ok: true });
 }));
 
 // ══════════════════════════════════════════════════════════════════════════

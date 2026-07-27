@@ -35,11 +35,12 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// 'custom' has no label — it renders as an icon-only chip (see below).
 const FILTERS = [
   { key: 'today', label: 'Today' },
   { key: 'week', label: 'This Week' },
   { key: 'month', label: 'This Month' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'custom' },
 ];
 
 export default function AdminDashboardScreen({ navigation }) {
@@ -126,27 +127,37 @@ export default function AdminDashboardScreen({ navigation }) {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.filterRow}>
-          {FILTERS.map((f) => (
-            <Pressable
-              key={f.key}
-              style={[styles.filterChip, filterMode === f.key && styles.filterChipActive]}
-              onPress={() => {
-                setFilterMode(f.key);
-                if (f.key === 'custom') setDatePickerOpen(true);
-              }}
-            >
-              {f.key === 'custom' ? (
-                <Ionicons
-                  name="calendar-outline"
-                  size={13}
-                  color={filterMode === 'custom' ? '#fff' : colors.ink}
-                  style={{ marginRight: 4 }}
-                />
-              ) : null}
-              <Text style={[styles.filterChipText, filterMode === f.key && styles.filterChipTextActive]}>
-                {f.key === 'custom' && filterMode === 'custom' ? formatDate(customDate) : f.label}
-              </Text>
-            </Pressable>
+          {FILTERS.map((f) => {
+            const active = filterMode === f.key;
+            if (f.key === 'custom') {
+              // Icon-only chip — no "Custom" label, just the calendar icon
+              // (showing the picked date once one is selected). Same tap
+              // behavior: selects this filter and opens the date picker.
+              return (
+                <Pressable
+                  key={f.key}
+                  style={[styles.filterChip, styles.filterChipIconOnly, active && styles.filterChipActive]}
+                  onPress={() => { setFilterMode('custom'); setDatePickerOpen(true); }}
+                >
+                  <Ionicons name="calendar-outline" size={15} color={active ? '#fff' : colors.ink} />
+                  {active ? (
+                    <Text style={[styles.filterChipText, styles.filterChipTextActive, { marginLeft: 4 }]}>
+                      {formatDate(customDate)}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              );
+            }
+            return (
+              <Pressable
+                key={f.key}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setFilterMode(f.key)}
+              >
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{f.label}</Text>
+              </Pressable>
+            );
+          })}
           ))}
         </View>
         <DatePickerModal
@@ -284,6 +295,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill, paddingHorizontal: spacing.md, paddingVertical: 8,
   },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChipIconOnly: { paddingHorizontal: 10 },
   filterChipText: { fontSize: 12.5, fontWeight: '700', color: colors.ink },
   filterChipTextActive: { color: '#fff' },
   orderRow: {

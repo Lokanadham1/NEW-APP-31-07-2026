@@ -90,6 +90,11 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
   }
 
   const balance = Math.max(0, order.total - order.paidAmount);
+  // Rejected/cancelled orders were never fulfilled — no payment is owed or
+  // collected for them, matching the billing exclusion already applied on
+  // the dashboards and customer totals. Showing "balance due" here would
+  // wrongly suggest the customer still owes money for a dead order.
+  const notBillable = order.status === 'rejected' || order.status === 'cancelled';
 
   return (
     <View style={styles.screen}>
@@ -126,16 +131,18 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
           {order.remarks ? <Text style={styles.lineMuted}>Note: {order.remarks}</Text> : null}
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Payment</Text>
-          <Text style={styles.line}>Paid ₹{order.paidAmount} of ₹{order.total}</Text>
-          {balance > 0 ? <Text style={styles.lineMuted}>Balance due: ₹{balance}</Text> : (
-            <Text style={[styles.lineMuted, { color: colors.primary, fontWeight: '700' }]}>Fully paid</Text>
-          )}
-          {order.payments.map((p, idx) => (
-            <Text key={idx} style={styles.paymentLine}>₹{p.amount} · {p.mode} · {p.date}</Text>
-          ))}
-        </View>
+        {!notBillable && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Payment</Text>
+            <Text style={styles.line}>Paid ₹{order.paidAmount} of ₹{order.total}</Text>
+            {balance > 0 ? <Text style={styles.lineMuted}>Balance due: ₹{balance}</Text> : (
+              <Text style={[styles.lineMuted, { color: colors.primary, fontWeight: '700' }]}>Fully paid</Text>
+            )}
+            {order.payments.map((p, idx) => (
+              <Text key={idx} style={styles.paymentLine}>₹{p.amount} · {p.mode} · {p.date}</Text>
+            ))}
+          </View>
+        )}
 
         {mode === 'reschedule' && (
           <View style={styles.card}>
@@ -164,7 +171,7 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {mode === 'payment' && (
+        {mode === 'payment' && !notBillable && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Record a payment (balance ₹{balance})</Text>
             <TextInput
@@ -234,7 +241,7 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
           {['pending', 'approved'].includes(order.status) && mode !== 'reschedule' && (
             <PrimaryButton title="Reschedule delivery" variant="outline" onPress={() => setMode('reschedule')} />
           )}
-          {balance > 0 && mode !== 'payment' && (
+          {!notBillable && balance > 0 && mode !== 'payment' && (
             <>
               <PrimaryButton title="Record payment" variant="outline" onPress={() => setMode('payment')} />
               <PrimaryButton

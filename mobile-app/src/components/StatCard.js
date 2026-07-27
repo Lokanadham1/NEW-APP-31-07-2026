@@ -4,14 +4,18 @@ import { colors, radii, spacing } from '../theme/colors';
 
 // A single summary tile used on both the admin and customer dashboards —
 // e.g. "Pending orders · 3". Wrap a row of these in a `statGrid`-styled View.
-// Pass onPress to make it tappable (e.g. jump to that status's order list);
+// Pass onPress to make it tappable (e.g. jump to that status's order list,
+// or toggle a filter — pass `active` to show it's currently toggled on);
 // omitted, it's just a plain display tile. size="compact" fits 3 per row
 // instead of 2, for screens with many stat cards (the admin dashboard).
-export default function StatCard({ label, value, highlight, onPress, size = 'default' }) {
+export default function StatCard({ label, value, highlight, onPress, size = 'default', active = false }) {
   const Wrapper = onPress ? Pressable : View;
   const compact = size === 'compact';
   return (
-    <Wrapper style={[styles.statCard, compact && styles.statCardCompact]} onPress={onPress}>
+    <Wrapper
+      style={[styles.statCard, compact && styles.statCardCompact, active && styles.statCardActive]}
+      onPress={onPress}
+    >
       <Text style={[styles.statLabel, compact && styles.statLabelCompact]}>{label}</Text>
       <Text style={[
         styles.statValue,
@@ -37,6 +41,10 @@ const styles = StyleSheet.create({
     width: '30%',
     padding: spacing.sm,
     borderRadius: radii.sm,
+  },
+  statCardActive: {
+    borderColor: colors.primary,
+    borderWidth: 2,
   },
   statLabel: { fontSize: 12, color: colors.slate },
   statLabelCompact: { fontSize: 10.5 },

@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable, Image, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from '../../theme/colors';
 import Header from '../../components/Header';
-import PrimaryButton from '../../components/PrimaryButton';
 import { api } from '../../api/client';
 
 export default function AdminProductsScreen({ navigation }) {
@@ -76,11 +76,21 @@ export default function AdminProductsScreen({ navigation }) {
                 <Text style={styles.meta}>{p.category || '—'} · ₹{p.price}</Text>
                 {p.status === 'out_of_stock' ? <Text style={styles.outOfStock}>Out of stock</Text> : null}
               </View>
-              <View style={{ gap: 6 }}>
-                <PrimaryButton title="Edit" variant="outline" style={styles.smallBtn}
-                  onPress={() => navigation.navigate('AdminProductForm', { product: p })} />
-                <PrimaryButton title="Delete" variant="outline" style={[styles.smallBtn, { borderColor: colors.danger }]}
-                  onPress={() => handleDelete(p)} />
+              <View style={styles.iconActions}>
+                <Pressable
+                  style={styles.iconBtn}
+                  onPress={() => navigation.navigate('AdminProductForm', { product: p })}
+                  hitSlop={8}
+                >
+                  <Ionicons name="pencil-outline" size={18} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  style={[styles.iconBtn, styles.iconBtnDanger]}
+                  onPress={() => handleDelete(p)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                </Pressable>
               </View>
             </View>
           )}
@@ -106,5 +116,11 @@ const styles = StyleSheet.create({
   name: { fontSize: 14.5, fontWeight: '700', color: colors.ink },
   meta: { fontSize: 12.5, color: colors.slate, marginTop: 2 },
   outOfStock: { fontSize: 11.5, fontWeight: '700', color: colors.danger, marginTop: 2 },
-  smallBtn: { paddingVertical: 6, paddingHorizontal: 12, minWidth: 70 },
+  iconActions: { flexDirection: 'row', gap: spacing.sm },
+  iconBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  iconBtnDanger: { backgroundColor: '#FBEAE6' },
 });
