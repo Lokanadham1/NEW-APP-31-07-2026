@@ -58,7 +58,17 @@ export default function CheckoutScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <Header title="Checkout" onBack={() => navigation.goBack()} />
+      <Header
+        title="Checkout"
+        onBack={() => {
+          // Checkout is nested in the Home tab's stack, but it's only ever
+          // reached from the Cart tab — a plain goBack() would pop within
+          // the Home stack and land on Home instead of back on Cart (same
+          // issue OrderSuccess works around below with popToTop()).
+          navigation.popToTop();
+          navigation.navigate('Cart');
+        }}
+      />
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivering to</Text>
