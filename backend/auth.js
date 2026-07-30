@@ -135,5 +135,5 @@ function adminRequired(req, res, next) {
 
 module.exports = {
   sendOtp, verifyOtp, findOrCreateUser, issueToken,
-  authRequired, adminRequired, isValidMobile, adminSet,
+  authRequired, adminRequired, isValidMobile,
 };

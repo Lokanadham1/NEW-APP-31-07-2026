@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import Header from '../components/Header';

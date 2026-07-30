@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import PrimaryButton from '../components/PrimaryButton';

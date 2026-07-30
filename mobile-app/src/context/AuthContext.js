@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { api, setAuthToken } from '../api/client';
 import { registerPushToken, unregisterPushToken } from '../push/notifications';

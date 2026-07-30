@@ -266,7 +266,9 @@ app.get('/orders', authRequired, h(async (req, res) => {
       ? await query('SELECT * FROM orders WHERE status=$1 ORDER BY id DESC', [status])
       : await query(`SELECT * FROM orders ORDER BY ${STATUS_PRIORITY_SQL}, id DESC`));
   } else {
-    ({ rows } = await query('SELECT * FROM orders WHERE user_id=$1 ORDER BY id DESC', [req.user.id]));
+    ({ rows } = status && status !== 'all'
+      ? await query('SELECT * FROM orders WHERE user_id=$1 AND status=$2 ORDER BY id DESC', [req.user.id, status])
+      : await query('SELECT * FROM orders WHERE user_id=$1 ORDER BY id DESC', [req.user.id]));
   }
   res.json(rows.map(mapOrder));
 }));

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 

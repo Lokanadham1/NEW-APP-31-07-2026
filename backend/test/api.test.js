@@ -123,6 +123,17 @@ test('accepting a non-pending order is rejected', async () => {
   assert.equal(res.status, 400);
 });
 
+test('customer order list respects ?status= (previously ignored for non-admins)', async () => {
+  const approvedOnly = await call(base, '/orders?status=approved', { token: customer1.token });
+  assert.equal(approvedOnly.status, 200);
+  assert.ok(approvedOnly.body.every((o) => o.status === 'approved'), 'every returned order must match the filter');
+  assert.ok(approvedOnly.body.some((o) => o.id === orderId));
+
+  const pendingOnly = await call(base, '/orders?status=pending', { token: customer1.token });
+  assert.equal(pendingOnly.status, 200);
+  assert.ok(!pendingOnly.body.some((o) => o.id === orderId), 'the now-approved order must not appear under the pending filter');
+});
+
 test('reschedule is allowed once for a customer, then blocked', async () => {
   const first = await call(base, `/orders/${orderId}/reschedule`, {
     method: 'POST', token: customer1.token,

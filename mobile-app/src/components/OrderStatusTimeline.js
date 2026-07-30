@@ -1,6 +1,5 @@
-import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, radii, spacing } from '../theme/colors';
+import { colors, spacing } from '../theme/colors';
 import { STATUS_LABEL, PIPELINE } from '../theme/orderStatus';
 
 // A vertical step-by-step timeline: Pending Approval -> Accepted -> Preparing

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { colors, radii, spacing } from '../theme/colors';
 import { iconForCategory } from '../theme/categoryIcons';
