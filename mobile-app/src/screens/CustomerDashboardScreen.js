@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing } from '../theme/colors';
@@ -17,16 +17,26 @@ export default function CustomerDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  // Guards against a background poll and a manual pull-to-refresh landing
+  // close together: without this, whichever request resolves last wins even
+  // if it was actually the older one, which can flash stale numbers back in.
+  const requestIdRef = useRef(0);
   const load = useCallback(async (isRefresh) => {
+    const requestId = ++requestIdRef.current;
     isRefresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
-      setSummary(await api.get('/me/dashboard'));
+      const dash = await api.get('/me/dashboard');
+      if (requestId !== requestIdRef.current) return;
+      setSummary(dash);
     } catch (e) {
+      if (requestId !== requestIdRef.current) return;
       setError(e.message);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 

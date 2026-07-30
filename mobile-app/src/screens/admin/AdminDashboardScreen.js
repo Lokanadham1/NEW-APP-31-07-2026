@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,21 +63,31 @@ export default function AdminDashboardScreen({ navigation }) {
   }, [filterMode, customDate]);
   const includesToday = range.to === todayIso();
 
+  // Guards against out-of-order responses: switching filters quickly, or a
+  // background poll landing while a manual refresh is still in flight, can
+  // make an older request's response arrive *after* a newer one's — without
+  // this, that stale response would silently overwrite the correct numbers.
+  const requestIdRef = useRef(0);
   const load = useCallback(async (isRefresh) => {
+    const requestId = ++requestIdRef.current;
     isRefresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
       const [dash, o, c] = await Promise.all([
         api.get(`/admin/dashboard?from=${range.from}&to=${range.to}`), api.get('/orders'), api.get('/customers'),
       ]);
+      if (requestId !== requestIdRef.current) return; // superseded by a newer request
       setSummary(dash);
       setOrders(o);
       setCustomers(c);
     } catch (e) {
+      if (requestId !== requestIdRef.current) return;
       setError(e.message);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [range.from, range.to]);
 
