@@ -15,7 +15,15 @@ export function AuthProvider({ children }) {
   // profile / role change on the server is always reflected.
   useEffect(() => {
     (async () => {
-      const saved = await SecureStore.getItemAsync(TOKEN_KEY);
+      let saved = null;
+      try {
+        saved = await SecureStore.getItemAsync(TOKEN_KEY);
+      } catch {
+        // The stored value can't be decrypted (e.g. Android invalidated the
+        // keystore key after a reinstall) — treat it like no saved session
+        // instead of leaving the app stuck on the loading screen forever.
+        try { await SecureStore.deleteItemAsync(TOKEN_KEY); } catch { /* best-effort */ }
+      }
       if (saved) {
         setAuthToken(saved);
         try {
