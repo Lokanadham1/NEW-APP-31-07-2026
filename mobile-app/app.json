@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#FFFBF2"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
       "package": "com.rotiandmore.app",
       "versionCode": 1,
@@ -33,6 +35,11 @@
           "color": "#1B7A3C"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f5393e2c-41f7-429d-8495-04d1bb5939a9"
+      }
+    }
   }
 }
