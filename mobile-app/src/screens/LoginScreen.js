@@ -67,7 +67,7 @@ export default function LoginScreen({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Image source={require('../../assets/logo.png')} style={styles.logo} />
-        <Text style={styles.title}>Welcome to Roti & More</Text>
+        <Text style={styles.title}>Welcome to Poli Parampara</Text>
         <Text style={styles.subtitle}>
           {step === 'phone'
             ? "Enter your mobile number — we'll text you a code"

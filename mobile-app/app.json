@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Roti & More",
+    "name": "Poli Parampara",
     "slug": "roti-and-more",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "rotiandmore",
+    "scheme": "poliparampara",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,8 +16,9 @@
       "**/*"
     ],
     "android": {
-      "package": "com.rotiandmore.app",
+      "package": "com.poliparampara.myapp",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFBF2"
@@ -25,16 +26,20 @@
       "permissions": []
     },
     "ios": {
-      "bundleIdentifier": "com.rotiandmore.app",
+      "bundleIdentifier": "com.poliparampara.myapp",
       "supportsTablet": false
     },
     "plugins": [
+      "@react-native-firebase/app",
       [
         "expo-notifications",
         {
           "color": "#1B7A3C"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {
