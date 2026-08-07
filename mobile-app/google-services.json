@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "732061755973",
+    "project_id": "projectloka-94b8e",
+    "storage_bucket": "projectloka-94b8e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:732061755973:android:0fa1b4006ff45945d8112c",
+        "android_client_info": {
+          "package_name": "com.poliparampara.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4BmjvdUGgVAEj5UpGmKF9OpYGR7zr6nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
