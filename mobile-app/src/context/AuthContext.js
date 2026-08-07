@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import auth from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
+import { getAuth, signInWithPhoneNumber, signOut as firebaseSignOut } from '@react-native-firebase/auth';
 import { api, setAuthToken } from '../api/client';
 import { registerPushToken, unregisterPushToken } from '../push/notifications';
 
@@ -49,7 +50,8 @@ export function AuthProvider({ children }) {
   // Sends the SMS via Firebase directly from the device — no backend call.
   // `mobile` is a bare 10-digit Indian number; Firebase needs E.164 (+91...).
   const requestOtp = useCallback(async (mobile) => {
-    const confirmation = await auth().signInWithPhoneNumber('+91' + mobile);
+    const authInstance = getAuth(getApp());
+    const confirmation = await signInWithPhoneNumber(authInstance, '+91' + mobile);
     confirmationRef.current = confirmation;
     return { sent: true };
   }, []);
@@ -92,7 +94,10 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     await unregisterPushToken();
-    try { await auth().signOut(); } catch { /* best-effort */ }
+    try {
+      const authInstance = getAuth(getApp());
+      await firebaseSignOut(authInstance);
+    } catch { /* best-effort */ }
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setAuthToken(null);
     setToken(null);
